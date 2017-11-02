@@ -42,13 +42,12 @@ public class KdbTableFactory implements TableFactory<KdbTable> {
 
     public KdbTable create(SchemaPlus schema, String name,
                            Map<String, Object> operand, RelDataType rowType) {
-        String fileName = (String) operand.get("file");
-        final File base =
-                (File) operand.get(ModelHandler.ExtraOperand.BASE_DIRECTORY.camelName);
-        final Source source = Sources.file(base, fileName);
+        final String hostname = (String) operand.get("hostname");
+        final Integer port = (Integer) operand.get("port");
+        final KdbConnection conn = new KdbConnection(hostname, port, null, null);
         final RelProtoDataType protoRowType =
                 rowType != null ? RelDataTypeImpl.proto(rowType) : null;
-        return new KdbScannableTable(source, protoRowType);
+        return new KdbTable(name, conn, protoRowType);
     }
 }
 

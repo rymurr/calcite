@@ -25,6 +25,7 @@ import org.apache.calcite.util.Sources;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,7 +35,8 @@ import java.util.Map;
 public class KdbSchema extends AbstractSchema {
   private final String hostname;
   private final Integer port;
-  private Map<String, Table> tableMap;
+    private final KdbConnection conn;
+    private Map<String, Table> tableMap;
 
   /**
    * Creates a CSV schema.
@@ -45,6 +47,7 @@ public class KdbSchema extends AbstractSchema {
     super();
     this.hostname = directoryFile;
     this.port = flavor;
+    this.conn = new KdbConnection(hostname, port, null, null);
   }
 
 
@@ -63,28 +66,19 @@ public class KdbSchema extends AbstractSchema {
 
   private Map<String, Table> createTableMap() throws IOException, c.KException {
 
-    c c=new c(hostname,port,"");
-    Object o = c.k("tables[]");
-//    while(true) {
-    System.out.println(o);
-//    }
+    String[] o = conn.getTables();
+
     // Build a map from table name to table; each file becomes a table.
     final ImmutableMap.Builder<String, Table> builder = ImmutableMap.builder();
-    for (File file : files) {
-      Source source = Sources.of(file);
-      Source sourceSansGz = source.trim(".gz");
-      final Source sourceSansJson = sourceSansGz.trimOrNull(".json");
-      if (sourceSansJson != null) {
-        JsonTable table = new JsonTable(source);
-        builder.put(sourceSansJson.relative(baseSource).path(), table);
-        continue;
-      }
-      final Source sourceSansCsv = sourceSansGz.trim(".csv");
-
-      final Table table = createTable(source);
-      builder.put(sourceSansCsv.relative(baseSource).path(), table);
+    for (String tableName : o) {
+      final Table table = createTable(tableName);
+      builder.put(tableName, table);
     }
     return builder.build();
+  }
+
+  private Table createTable(String tableName) {
+    return new KdbTable(tableName, conn, null);
   }
 
 }

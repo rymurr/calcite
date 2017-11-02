@@ -21,6 +21,9 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Ordering;
 import org.apache.calcite.adapter.csv.CsvSchemaFactory;
 import org.apache.calcite.adapter.csv.CsvStreamTableFactory;
+import org.apache.calcite.avatica.util.Casing;
+import org.apache.calcite.config.CalciteConnectionProperty;
+import org.apache.calcite.config.Lex;
 import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.sql2rel.SqlToRelConverter;
@@ -159,7 +162,7 @@ public class KdbTest {
    * Reads from a table.
    */
   @Test public void testSelect() throws SQLException {
-    sql("model", "select * from EMPS").ok();
+    sql("kdbmodel", "select * from trade").ok();
   }
 
   @Test public void testSelectSingleProjectGz() throws SQLException {
@@ -321,6 +324,9 @@ public class KdbTest {
     try {
       Properties info = new Properties();
       info.put("model", jsonPath(model));
+      //info.put(CalciteConnectionProperty.CASE_SENSITIVE.camelName(), false);
+      info.put(CalciteConnectionProperty.UNQUOTED_CASING.camelName(), Casing.UNCHANGED.toString());
+      info.put(CalciteConnectionProperty.LEX.camelName(), Lex.JAVA.toString());
       connection = DriverManager.getConnection("jdbc:calcite:", info);
       statement = connection.createStatement();
       final ResultSet resultSet =

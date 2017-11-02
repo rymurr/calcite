@@ -16,29 +16,51 @@
  */
 package org.apache.calcite.adapter.csv;
 
+import com.google.common.collect.ImmutableMap;
+import org.apache.calcite.adapter.java.AbstractQueryableTable;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
+import org.apache.calcite.linq4j.QueryProvider;
+import org.apache.calcite.linq4j.Queryable;
+import org.apache.calcite.plan.RelOptCluster;
+import org.apache.calcite.plan.RelOptTable;
+import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.rel.type.RelProtoDataType;
+import org.apache.calcite.schema.SchemaPlus;
+import org.apache.calcite.schema.TranslatableTable;
 import org.apache.calcite.schema.impl.AbstractTable;
+import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Source;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Base class for table that reads CSV files.
  */
-public abstract class KdbTable extends AbstractTable {
-    protected final Source source;
+public class KdbTable extends AbstractQueryableTable implements TranslatableTable {
+    protected final String source;
+    private KdbConnection conn;
     protected final RelProtoDataType protoRowType;
     protected List<CsvFieldType> fieldTypes;
 
+    private static final Map<Character, SqlTypeName> allTypes = ImmutableMap.<Character, SqlTypeName>builder()
+            .put('t', SqlTypeName.TIME)
+            .put('s', SqlTypeName.VARCHAR)
+            .put('i', SqlTypeName.INTEGER)
+            .put('f', SqlTypeName.FLOAT)
+            .build();
     /**
      * Creates a CsvTable.
      */
-    KdbTable(Source source, RelProtoDataType protoRowType) {
+    KdbTable(String source, KdbConnection conn, RelProtoDataType protoRowType) {
+        super(Object[].class);
         this.source = source;
+        this.conn = conn;
         this.protoRowType = protoRowType;
     }
 
@@ -46,21 +68,26 @@ public abstract class KdbTable extends AbstractTable {
         if (protoRowType != null) {
             return protoRowType.apply(typeFactory);
         }
-        if (fieldTypes == null) {
-            fieldTypes = new ArrayList<>();
-            return CsvEnumerator.deduceRowType((JavaTypeFactory) typeFactory, source,
-                    fieldTypes);
-        } else {
-            return CsvEnumerator.deduceRowType((JavaTypeFactory) typeFactory, source,
-                    null);
+        final List<RelDataType> types = new ArrayList<>();
+        final List<String> names = new ArrayList<>();
+        Pair<String[], char[]> o = conn.getSchema(source);
+        for (char c: o.right) {
+            types.add(typeFactory.createSqlType(allTypes.get(c)));
         }
+        names.addAll(Arrays.asList(o.left));
+        return typeFactory.createStructType(Pair.zip(names, types));
     }
 
-    /**
-     * Various degrees of table "intelligence".
-     */
-    public enum Flavor {
-        SCANNABLE, FILTERABLE, TRANSLATABLE
+    @Override
+    public RelNode toRel(RelOptTable.ToRelContext context, RelOptTable relOptTable) {
+        final RelOptCluster cluster = context.getCluster();
+        return new KdbTableScan(cluster, cluster.traitSetOf(KdbRel.CONVENTION),
+                relOptTable, this, null);
+    }
+
+    @Override
+    public <T> Queryable<T> asQueryable(QueryProvider queryProvider, SchemaPlus schema, String tableName) {
+        return null;
     }
 }
 
