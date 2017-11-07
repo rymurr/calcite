@@ -19,10 +19,7 @@ package org.apache.calcite.adapter.csv;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import org.apache.calcite.adapter.enumerable.*;
-import org.apache.calcite.linq4j.tree.BlockBuilder;
-import org.apache.calcite.linq4j.tree.Expression;
-import org.apache.calcite.linq4j.tree.Expressions;
-import org.apache.calcite.linq4j.tree.MethodCallExpression;
+import org.apache.calcite.linq4j.tree.*;
 import org.apache.calcite.plan.*;
 import org.apache.calcite.prepare.CalcitePrepareImpl;
 import org.apache.calcite.rel.RelNode;
@@ -30,9 +27,11 @@ import org.apache.calcite.rel.convert.ConverterImpl;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.runtime.Hook;
+import org.apache.calcite.sql.validate.SqlValidatorUtil;
 import org.apache.calcite.util.BuiltInMethod;
 import org.apache.calcite.util.Pair;
 
+import java.lang.reflect.Method;
 import java.util.AbstractList;
 import java.util.List;
 
@@ -71,7 +70,7 @@ public class KdbToEnumerableConverter
     //     "{$filter: {state: 'CA'}}",
     //     "{$group: {_id: '$city', c: {$sum: 1}, p: {$sum: "$pop"}}")
     final BlockBuilder list = new BlockBuilder();
-    final KdbRel.Implementor mongoImplementor = new KdbRel().Implementor();
+    final KdbRel.Implementor mongoImplementor = new KdbRel.Implementor();
     mongoImplementor.visitChild(0, getInput());
     int aggCount = 0;
     int findCount = 0;
@@ -98,7 +97,7 @@ public class KdbToEnumerableConverter
     final Expression fields =
         list.append("fields",
             constantArrayList(
-                Pair.zip(MongoRules.mongoFieldNames(rowType),
+                Pair.zip(mongoFieldNames(rowType),
                     new AbstractList<Class>() {
                       @Override public Class get(int index) {
                         return physType.fieldClass(index);
@@ -112,15 +111,14 @@ public class KdbToEnumerableConverter
     final Expression table =
         list.append("table",
             mongoImplementor.table.getExpression(
-                MongoTable.MongoQueryable.class));
+                KdbTable.KdbQueryable.class));
     List<String> opList = Pair.right(mongoImplementor.list);
     final Expression ops =
         list.append("ops",
             constantArrayList(opList, String.class));
     Expression enumerable =
-        list.append("enumerable",
-            Expressions.call(table,
-                MongoMethod.MONGO_QUERYABLE_AGGREGATE.method, fields, ops));
+        list.append("enumerable", mongoImplementor.table.getExpression(
+                KdbTable.KdbQueryable.class));
     if (CalcitePrepareImpl.DEBUG) {
       System.out.println("Mongo: " + opList);
     }
@@ -149,6 +147,22 @@ public class KdbToEnumerableConverter
           }
         });
   }
+
+  static List<String> mongoFieldNames(final RelDataType rowType) {
+    return SqlValidatorUtil.uniquify(
+            new AbstractList<String>() {
+              @Override public String get(int index) {
+                final String name = rowType.getFieldList().get(index).getName();
+                return name.startsWith("$") ? "_" + name.substring(2) : name;
+              }
+
+              @Override public int size() {
+                return rowType.getFieldCount();
+              }
+            },
+            SqlValidatorUtil.EXPR_SUGGESTER, true);
+  }
+
 }
 
 // End KdbToEnumerableConverter.java

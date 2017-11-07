@@ -74,5 +74,17 @@ public class KdbConnection {
         //todo deal w/ partitions etc
         return Pair.of(names, types);
     }
+
+    public c.Flip select(String source) {
+        try {
+            c.Flip foo = (c.Flip) getConn().k("select from " + source);
+            return foo;
+        } catch (c.KException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 }
 

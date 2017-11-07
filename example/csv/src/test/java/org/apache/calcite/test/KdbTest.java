@@ -166,7 +166,7 @@ public class KdbTest {
   }
 
   @Test public void testSelectSingleProjectGz() throws SQLException {
-    sql("smart", "select name from EMPS").ok();
+    sql("kdbmodel", "select sym from trade").ok();
   }
 
   @Test public void testSelectSingleProject() throws SQLException {

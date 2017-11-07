@@ -77,6 +77,10 @@ public class KdbSchema extends AbstractSchema {
     return builder.build();
   }
 
+  public KdbConnection getConn() {
+    return conn;
+  }
+
   private Table createTable(String tableName) {
     return new KdbTable(tableName, conn, null);
   }

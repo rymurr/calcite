@@ -17,19 +17,23 @@
 package org.apache.calcite.adapter.csv;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.calcite.DataContext;
 import org.apache.calcite.adapter.java.AbstractQueryableTable;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
-import org.apache.calcite.linq4j.QueryProvider;
-import org.apache.calcite.linq4j.Queryable;
+import org.apache.calcite.linq4j.*;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptTable;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.rel.type.RelProtoDataType;
+import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.schema.FilterableTable;
+import org.apache.calcite.schema.ScannableTable;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.TranslatableTable;
 import org.apache.calcite.schema.impl.AbstractTable;
+import org.apache.calcite.schema.impl.AbstractTableQueryable;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Source;
@@ -42,7 +46,7 @@ import java.util.Map;
 /**
  * Base class for table that reads CSV files.
  */
-public class KdbTable extends AbstractQueryableTable implements TranslatableTable {
+public class KdbTable extends AbstractQueryableTable implements TranslatableTable, FilterableTable, ScannableTable {
     protected final String source;
     private KdbConnection conn;
     protected final RelProtoDataType protoRowType;
@@ -87,7 +91,47 @@ public class KdbTable extends AbstractQueryableTable implements TranslatableTabl
 
     @Override
     public <T> Queryable<T> asQueryable(QueryProvider queryProvider, SchemaPlus schema, String tableName) {
+        return new KdbQueryable<>(queryProvider, schema, this, tableName);
+    }
+
+    @Override
+    public Enumerable<Object[]> scan(DataContext root, List<RexNode> filters) {
         return null;
+    }
+
+    @Override
+    public Enumerable<Object[]> scan(DataContext root) {
+        return null;
+    }
+
+    public static class KdbQueryable<T> extends AbstractTableQueryable<T> {
+        KdbQueryable(QueryProvider queryProvider, SchemaPlus schema,
+                       KdbTable table, String tableName) {
+            super(queryProvider, schema, table, tableName);
+        }
+
+        public Enumerator<T> enumerator() {
+            //noinspection unchecked
+            /*final Enumerable<T> enumerable =
+                    (Enumerable<T>) getTable().find(getKdb(), null, null, null);
+            return enumerable.enumerator();*/
+            return new AbstractEnumerable<T>(){
+
+                @Override
+                public Enumerator<T> enumerator() {
+                    return new KdbEnumerator<T>(getKdb(), getTable());
+                }
+            }.enumerator();
+        }
+
+        private KdbConnection getKdb() {
+            return schema.unwrap(KdbSchema.class).getConn();
+        }
+
+        private KdbTable getTable() {
+            return (KdbTable) table;
+        }
+
     }
 }
 
