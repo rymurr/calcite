@@ -72,9 +72,9 @@ public class KdbTableScan extends TableScan implements KdbRel {
 
   @Override public void register(RelOptPlanner planner) {
     planner.addRule(KdbToEnumerableConverterRule.INSTANCE);
-    /*for (RelOptRule rule : MongoRules.RULES) {
+    for (RelOptRule rule : KdbRules.RULES) {
       planner.addRule(rule);
-    }*/
+    }
   }
 
   public void implement(Implementor implementor) {
