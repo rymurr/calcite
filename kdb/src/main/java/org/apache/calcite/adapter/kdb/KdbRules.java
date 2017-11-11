@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.calcite.adapter.mongodb;
+package org.apache.calcite.adapter.kdb;
 
 import org.apache.calcite.adapter.enumerable.RexImpTable;
 import org.apache.calcite.adapter.enumerable.RexToLixTranslator;
@@ -56,11 +56,11 @@ import java.util.Map;
 
 /**
  * Rules and relational operators for
- * {@link MongoRel#CONVENTION MONGO}
+ * {@link KdbRel#CONVENTION MONGO}
  * calling convention.
  */
-public class MongoRules {
-  private MongoRules() {}
+public class KdbRules {
+  private KdbRules() {}
 
   protected static final Logger LOGGER = CalciteTrace.getPlannerTracer();
 
@@ -226,7 +226,7 @@ public class MongoRules {
         return sb.toString();
       }
       throw new IllegalArgumentException("Translation of " + call.toString()
-          + " is not supported by MongoProject");
+          + " is not supported by KdbProject");
     }
 
     private String stripQuotes(String s) {
@@ -258,13 +258,13 @@ public class MongoRules {
 
   /**
    * Rule to convert a {@link org.apache.calcite.rel.core.Sort} to a
-   * {@link MongoSort}.
+   * {@link KdbSort}.
    */
   private static class MongoSortRule extends MongoConverterRule {
     public static final MongoSortRule INSTANCE = new MongoSortRule();
 
     private MongoSortRule() {
-      super(Sort.class, Convention.NONE, MongoRel.CONVENTION,
+      super(Sort.class, Convention.NONE, KdbRel.CONVENTION,
           "MongoSortRule");
     }
 
@@ -273,7 +273,7 @@ public class MongoRules {
       final RelTraitSet traitSet =
           sort.getTraitSet().replace(out)
               .replace(sort.getCollation());
-      return new MongoSort(rel.getCluster(), traitSet,
+      return new KdbSort(rel.getCluster(), traitSet,
           convert(sort.getInput(), traitSet.replace(RelCollations.EMPTY)),
           sort.getCollation(), sort.offset, sort.fetch);
     }
@@ -281,20 +281,20 @@ public class MongoRules {
 
   /**
    * Rule to convert a {@link org.apache.calcite.rel.logical.LogicalFilter} to a
-   * {@link MongoFilter}.
+   * {@link KdbFilter}.
    */
   private static class MongoFilterRule extends MongoConverterRule {
     private static final MongoFilterRule INSTANCE = new MongoFilterRule();
 
     private MongoFilterRule() {
-      super(LogicalFilter.class, Convention.NONE, MongoRel.CONVENTION,
+      super(LogicalFilter.class, Convention.NONE, KdbRel.CONVENTION,
           "MongoFilterRule");
     }
 
     public RelNode convert(RelNode rel) {
       final LogicalFilter filter = (LogicalFilter) rel;
       final RelTraitSet traitSet = filter.getTraitSet().replace(out);
-      return new MongoFilter(
+      return new KdbFilter(
           rel.getCluster(),
           traitSet,
           convert(filter.getInput(), out),
@@ -304,20 +304,20 @@ public class MongoRules {
 
   /**
    * Rule to convert a {@link org.apache.calcite.rel.logical.LogicalProject}
-   * to a {@link MongoProject}.
+   * to a {@link KdbProject}.
    */
   private static class MongoProjectRule extends MongoConverterRule {
     private static final MongoProjectRule INSTANCE = new MongoProjectRule();
 
     private MongoProjectRule() {
-      super(LogicalProject.class, Convention.NONE, MongoRel.CONVENTION,
+      super(LogicalProject.class, Convention.NONE, KdbRel.CONVENTION,
           "MongoProjectRule");
     }
 
     public RelNode convert(RelNode rel) {
       final LogicalProject project = (LogicalProject) rel;
       final RelTraitSet traitSet = project.getTraitSet().replace(out);
-      return new MongoProject(project.getCluster(), traitSet,
+      return new KdbProject(project.getCluster(), traitSet,
           convert(project.getInput(), out), project.getProjects(),
           project.getRowType());
     }
@@ -359,7 +359,7 @@ public class MongoRules {
     }
   }
 
-  public static class MongoCalcRel extends SingleRel implements MongoRel {
+  public static class MongoCalcRel extends SingleRel implements KdbRel {
     private final RexProgram program;
 
     /**
@@ -494,13 +494,13 @@ public class MongoRules {
 
   /**
    * Rule to convert an {@link org.apache.calcite.rel.logical.LogicalAggregate}
-   * to an {@link MongoAggregate}.
+   * to an {@link KdbAggregate}.
    */
   private static class MongoAggregateRule extends MongoConverterRule {
     public static final RelOptRule INSTANCE = new MongoAggregateRule();
 
     private MongoAggregateRule() {
-      super(LogicalAggregate.class, Convention.NONE, MongoRel.CONVENTION,
+      super(LogicalAggregate.class, Convention.NONE, KdbRel.CONVENTION,
           "MongoAggregateRule");
     }
 
@@ -509,7 +509,7 @@ public class MongoRules {
       final RelTraitSet traitSet =
           agg.getTraitSet().replace(out);
       try {
-        return new MongoAggregate(
+        return new KdbAggregate(
             rel.getCluster(),
             traitSet,
             convert(agg.getInput(), traitSet.simplify()),
@@ -553,7 +553,7 @@ public class MongoRules {
 
   public static class MongoUnionRel
       extends Union
-      implements MongoRel {
+      implements KdbRel {
     public MongoUnionRel(
         RelOptCluster cluster,
         RelTraitSet traitSet,
@@ -621,7 +621,7 @@ public class MongoRules {
 
   public static class MongoIntersectRel
       extends Intersect
-      implements MongoRel {
+      implements KdbRel {
     public MongoIntersectRel(
         RelOptCluster cluster,
         RelTraitSet traitSet,
@@ -672,7 +672,7 @@ public class MongoRules {
 
   public static class MongoMinusRel
       extends Minus
-      implements MongoRel {
+      implements KdbRel {
     public MongoMinusRel(
         RelOptCluster cluster,
         RelTraitSet traitSet,
@@ -713,7 +713,7 @@ public class MongoRules {
 
   public static class MongoValuesRel
       extends Values
-      implements MongoRel {
+      implements KdbRel {
     MongoValuesRel(
         RelOptCluster cluster,
         RelDataType rowType,
@@ -736,4 +736,4 @@ public class MongoRules {
 */
 }
 
-// End MongoRules.java
+// End KdbRules.java

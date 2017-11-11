@@ -1,0 +1,186 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.calcite.adapter.kdb;
+
+import org.apache.calcite.adapter.java.AbstractQueryableTable;
+import org.apache.calcite.linq4j.AbstractEnumerable;
+import org.apache.calcite.linq4j.Enumerable;
+import org.apache.calcite.linq4j.Enumerator;
+import org.apache.calcite.linq4j.QueryProvider;
+import org.apache.calcite.linq4j.Queryable;
+import org.apache.calcite.plan.RelOptCluster;
+import org.apache.calcite.plan.RelOptTable;
+import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rel.type.RelDataTypeFactory;
+import org.apache.calcite.schema.SchemaPlus;
+import org.apache.calcite.schema.TranslatableTable;
+import org.apache.calcite.schema.impl.AbstractTableQueryable;
+import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.calcite.util.Util;
+
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Table based on a MongoDB collection.
+ */
+public class KdbTable extends AbstractQueryableTable
+    implements TranslatableTable {
+  private final String collectionName;
+
+  /** Creates a KdbTable. */
+  KdbTable(String collectionName) {
+    super(Object[].class);
+    this.collectionName = collectionName;
+  }
+
+  public String toString() {
+    return "KdbTable {" + collectionName + "}";
+  }
+
+  public RelDataType getRowType(RelDataTypeFactory typeFactory) {
+    final RelDataType mapType =
+        typeFactory.createMapType(
+            typeFactory.createSqlType(SqlTypeName.VARCHAR),
+            typeFactory.createTypeWithNullability(
+                typeFactory.createSqlType(SqlTypeName.ANY), true));
+    return typeFactory.builder().add("_MAP", mapType).build();
+  }
+
+  public <T> Queryable<T> asQueryable(QueryProvider queryProvider,
+      SchemaPlus schema, String tableName) {
+    return new KdbQueryable<>(queryProvider, schema, this, tableName);
+  }
+
+  public RelNode toRel(
+      RelOptTable.ToRelContext context,
+      RelOptTable relOptTable) {
+    final RelOptCluster cluster = context.getCluster();
+    return new KdbTableScan(cluster, cluster.traitSetOf(KdbRel.CONVENTION),
+        relOptTable, this, null);
+  }
+
+  /** Executes a "find" operation on the underlying collection.
+   *
+   * <p>For example,
+   * <code>zipsTable.find("{state: 'OR'}", "{city: 1, zipcode: 1}")</code></p>
+   *
+   * @param kdb MongoDB connection
+   * @param filterJson Filter JSON string, or null
+   * @param projectJson Project JSON string, or null
+   * @param fields List of fields to project; or null to return map
+   * @return Enumerator of results
+   */
+  private Enumerable<Object> find(final KdbConnection kdb, String filterJson,
+      String projectJson, List<Map.Entry<String, Class>> fields) {
+
+    final String query = QueryGenerator.generate(collectionName, filterJson, projectJson, fields);
+    return new AbstractEnumerable<Object>() {
+      public Enumerator<Object> enumerator() {
+
+        final Iterable<Object[]> cursor = kdb.select(query);
+        return new KdbEnumerator(cursor.iterator());
+      }
+    };
+  }
+
+  /** Executes an "aggregate" operation on the underlying collection.
+   *
+   * <p>For example:
+   * <code>zipsTable.aggregate(
+   * "{$filter: {state: 'OR'}",
+   * "{$group: {_id: '$city', c: {$sum: 1}, p: {$sum: '$pop'}}}")
+   * </code></p>
+   *
+   * @param kdb MongoDB connection
+   * @param fields List of fields to project; or null to return map
+   * @param operations One or more JSON strings
+   * @return Enumerator of results
+   */
+  private Enumerable<Object> aggregate(final KdbConnection kdb,
+      final List<Map.Entry<String, Class>> fields,
+      final List<String> operations) {
+
+    return new AbstractEnumerable<Object>() {
+      public Enumerator<Object> enumerator() {
+        final Iterator<Object[]> resultIterator;
+        try {
+
+          String query = QueryGenerator.groupby(collectionName, fields, operations);
+          final Iterable<Object[]> cursor = kdb.select(query);
+          resultIterator = cursor.iterator();
+
+        } catch (Exception e) {
+          throw new RuntimeException("While running MongoDB query "
+              + Util.toString(operations, "[", ",\n", "]"), e);
+        }
+        return new KdbEnumerator(resultIterator);
+      }
+    };
+  }
+
+
+  /** Implementation of {@link org.apache.calcite.linq4j.Queryable} based on
+   * a {@link KdbTable}.
+   *
+   * @param <T> element type */
+  public static class KdbQueryable<T> extends AbstractTableQueryable<T> {
+    KdbQueryable(QueryProvider queryProvider, SchemaPlus schema,
+                 KdbTable table, String tableName) {
+      super(queryProvider, schema, table, tableName);
+    }
+
+    public Enumerator<T> enumerator() {
+      //noinspection unchecked
+      final Enumerable<T> enumerable =
+          (Enumerable<T>) getTable().find(getKdb(), null, null, null);
+      return enumerable.enumerator();
+    }
+
+    private KdbConnection getKdb() {
+      return schema.unwrap(KdbSchema.class).kdb;
+    }
+
+    private KdbTable getTable() {
+      return (KdbTable) table;
+    }
+
+    /** Called via code-generation.
+     *
+     * @see KdbMethod#KDB_QUERYABLE_AGGREGATE
+     */
+    @SuppressWarnings("UnusedDeclaration")
+    public Enumerable<Object> aggregate(List<Map.Entry<String, Class>> fields,
+        List<String> operations) {
+      return getTable().aggregate(getKdb(), fields, operations);
+    }
+
+    /** Called via code-generation.
+     *
+     * @see KdbMethod#KDB_QUERYABLE_FIND
+     */
+    @SuppressWarnings("UnusedDeclaration")
+    public Enumerable<Object> find(String filterJson,
+        String projectJson, List<Map.Entry<String, Class>> fields) {
+      return getTable().find(getKdb(), filterJson, projectJson, fields);
+    }
+  }
+}
+
+// End KdbTable.java

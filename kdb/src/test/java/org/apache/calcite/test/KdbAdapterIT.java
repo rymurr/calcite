@@ -42,7 +42,7 @@ import static org.junit.Assert.assertThat;
 /**
  * Tests for the {@code org.apache.calcite.adapter.kdb} package.
  *
- * <p>Before calling this test, you need to populate MongoDB, as follows:
+ * <p>Before calling this test, you need to populate KdbDB, as follows:
  *
  * <blockquote><code>
  * git clone https://github.com/vlsi/calcite-test-dataset<br>
@@ -50,14 +50,14 @@ import static org.junit.Assert.assertThat;
  * mvn install
  * </code></blockquote>
  *
- * <p>This will create a virtual machine with MongoDB and "zips" and "foodmart"
+ * <p>This will create a virtual machine with KdbDB and "zips" and "foodmart"
  * data sets.
  */
-public class MongoAdapterIT {
-  public static final String MONGO_FOODMART_SCHEMA = "     {\n"
+public class KdbAdapterIT {
+  public static final String KDB_FOODMART_SCHEMA = "     {\n"
       + "       type: 'custom',\n"
       + "       name: '_foodmart',\n"
-      + "       factory: 'org.apache.calcite.adapter.kdb.MongoSchemaFactory',\n"
+      + "       factory: 'org.apache.calcite.adapter.kdb.KdbSchemaFactory',\n"
       + "       operand: {\n"
       + "         host: 'localhost',\n"
       + "         database: 'foodmart'\n"
@@ -89,27 +89,27 @@ public class MongoAdapterIT {
       + "       ]\n"
       + "     }\n";
 
-  public static final String MONGO_FOODMART_MODEL = "{\n"
+  public static final String KDB_FOODMART_MODEL = "{\n"
       + "  version: '1.0',\n"
       + "  defaultSchema: 'foodmart',\n"
       + "   schemas: [\n"
-      + MONGO_FOODMART_SCHEMA
+      + KDB_FOODMART_SCHEMA
       + "   ]\n"
       + "}";
 
-  /** Connection factory based on the "mongo-zips" model. */
+  /** Connection factory based on the "kdb-zips" model. */
   public static final ImmutableMap<String, String> ZIPS =
       ImmutableMap.of("model",
-          MongoAdapterIT.class.getResource("/mongo-zips-model.json")
+          KdbAdapterIT.class.getResource("/kdb-zips-model.json")
               .getPath());
 
-  /** Connection factory based on the "mongo-zips" model. */
+  /** Connection factory based on the "kdb-zips" model. */
   public static final ImmutableMap<String, String> FOODMART =
       ImmutableMap.of("model",
-          MongoAdapterIT.class.getResource("/mongo-foodmart-model.json")
+          KdbAdapterIT.class.getResource("/kdb-foodmart-model.json")
               .getPath());
 
-  /** Whether to run Mongo tests. Enabled by default, however test is only
+  /** Whether to run Kdb tests. Enabled by default, however test is only
    * included if "it" profile is activated ({@code -Pit}). To disable,
    * specify {@code -Dcalcite.test.kdb=false} on the Java command line. */
   public static final boolean ENABLED =
@@ -120,16 +120,16 @@ public class MongoAdapterIT {
     return ENABLED;
   }
 
-  /** Returns a function that checks that a particular MongoDB pipeline is
+  /** Returns a function that checks that a particular KdbDB pipeline is
    * generated to implement a query. */
-  private static Function<List, Void> mongoChecker(final String... strings) {
+  private static Function<List, Void> kdbChecker(final String... strings) {
     return new Function<List, Void>() {
       public Void apply(List actual) {
         Object[] actualArray =
             actual == null || actual.isEmpty()
                 ? null
                 : ((List) actual.get(0)).toArray();
-        CalciteAssert.assertArrayEqual("expected MongoDB query not found",
+        CalciteAssert.assertArrayEqual("expected KdbDB query not found",
             strings, actualArray);
         return null;
       }
@@ -171,10 +171,10 @@ public class MongoAdapterIT {
         .with(ZIPS)
         .query("select * from zips order by state")
         .returnsCount(29353)
-        .explainContains("PLAN=MongoToEnumerableConverter\n"
-            + "  MongoSort(sort0=[$4], dir0=[ASC])\n"
-            + "    MongoProject(CITY=[CAST(ITEM($0, 'city')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], LONGITUDE=[CAST(ITEM(ITEM($0, 'loc'), 0)):FLOAT], LATITUDE=[CAST(ITEM(ITEM($0, 'loc'), 1)):FLOAT], POP=[CAST(ITEM($0, 'pop')):INTEGER], STATE=[CAST(ITEM($0, 'state')):VARCHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], ID=[CAST(ITEM($0, '_id')):VARCHAR(5) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"])\n"
-            + "      MongoTableScan(table=[[mongo_raw, zips]])");
+        .explainContains("PLAN=KdbToEnumerableConverter\n"
+            + "  KdbSort(sort0=[$4], dir0=[ASC])\n"
+            + "    KdbProject(CITY=[CAST(ITEM($0, 'city')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], LONGITUDE=[CAST(ITEM(ITEM($0, 'loc'), 0)):FLOAT], LATITUDE=[CAST(ITEM(ITEM($0, 'loc'), 1)):FLOAT], POP=[CAST(ITEM($0, 'pop')):INTEGER], STATE=[CAST(ITEM($0, 'state')):VARCHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], ID=[CAST(ITEM($0, '_id')):VARCHAR(5) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"])\n"
+            + "      KdbTableScan(table=[[kdb_raw, zips]])");
   }
 
   @Test public void testSortLimit() {
@@ -187,7 +187,7 @@ public class MongoAdapterIT {
             + "STATE=AK; ID=99504\n"
             + "STATE=AK; ID=99505\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {STATE: '$state', ID: '$_id'}}",
                 "{$sort: {STATE: 1, ID: 1}}",
                 "{$skip: 2}",
@@ -202,7 +202,7 @@ public class MongoAdapterIT {
             + "offset 2 fetch next 3 rows only")
         .runs()
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$skip: 2}",
                 "{$limit: 3}",
                 "{$project: {STATE: '$state', ID: '$_id'}}"));
@@ -216,7 +216,7 @@ public class MongoAdapterIT {
             + "fetch next 3 rows only")
         .runs()
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$limit: 3}",
                 "{$project: {STATE: '$state', ID: '$_id'}}"));
   }
@@ -238,7 +238,7 @@ public class MongoAdapterIT {
             + "CITY=SPRINGFIELD; LONGITUDE=null; LATITUDE=null; POP=32384; STATE=OR; ID=97477\n"
             + "CITY=SPRINGFIELD; LONGITUDE=null; LATITUDE=null; POP=27521; STATE=OR; ID=97478\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{\n"
                     + "  $match: {\n"
                     + "    city: \"SPRINGFIELD\",\n"
@@ -249,11 +249,11 @@ public class MongoAdapterIT {
                     + "}",
                 "{$project: {CITY: '$city', LONGITUDE: '$loc[0]', LATITUDE: '$loc[1]', POP: '$pop', STATE: '$state', ID: '$_id'}}",
                 "{$sort: {STATE: 1, ID: 1}}"))
-        .explainContains("PLAN=MongoToEnumerableConverter\n"
-            + "  MongoSort(sort0=[$4], sort1=[$5], dir0=[ASC], dir1=[ASC])\n"
-            + "    MongoProject(CITY=[CAST(ITEM($0, 'city')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], LONGITUDE=[CAST(ITEM(ITEM($0, 'loc'), 0)):FLOAT], LATITUDE=[CAST(ITEM(ITEM($0, 'loc'), 1)):FLOAT], POP=[CAST(ITEM($0, 'pop')):INTEGER], STATE=[CAST(ITEM($0, 'state')):VARCHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], ID=[CAST(ITEM($0, '_id')):VARCHAR(5) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"])\n"
-            + "      MongoFilter(condition=[AND(=(CAST(ITEM($0, 'city')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\", 'SPRINGFIELD'), >=(CAST(ITEM($0, '_id')):VARCHAR(5) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\", '70000'))])\n"
-            + "        MongoTableScan(table=[[mongo_raw, zips]])");
+        .explainContains("PLAN=KdbToEnumerableConverter\n"
+            + "  KdbSort(sort0=[$4], sort1=[$5], dir0=[ASC], dir1=[ASC])\n"
+            + "    KdbProject(CITY=[CAST(ITEM($0, 'city')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], LONGITUDE=[CAST(ITEM(ITEM($0, 'loc'), 0)):FLOAT], LATITUDE=[CAST(ITEM(ITEM($0, 'loc'), 1)):FLOAT], POP=[CAST(ITEM($0, 'pop')):INTEGER], STATE=[CAST(ITEM($0, 'state')):VARCHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], ID=[CAST(ITEM($0, '_id')):VARCHAR(5) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"])\n"
+            + "      KdbFilter(condition=[AND(=(CAST(ITEM($0, 'city')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\", 'SPRINGFIELD'), >=(CAST(ITEM($0, '_id')):VARCHAR(5) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\", '70000'))])\n"
+            + "        KdbTableScan(table=[[kdb_raw, zips]])");
   }
 
   @Test public void testFilterSortDesc() {
@@ -274,17 +274,17 @@ public class MongoAdapterIT {
   @Test public void testUnionPlan() {
     CalciteAssert.that()
         .enable(enabled())
-        .withModel(MONGO_FOODMART_MODEL)
+        .withModel(KDB_FOODMART_MODEL)
         .query("select * from \"sales_fact_1997\"\n"
             + "union all\n"
             + "select * from \"sales_fact_1998\"")
         .explainContains("PLAN=EnumerableUnion(all=[true])\n"
-            + "  MongoToEnumerableConverter\n"
-            + "    MongoProject(product_id=[CAST(ITEM($0, 'product_id')):DOUBLE])\n"
-            + "      MongoTableScan(table=[[_foodmart, sales_fact_1997]])\n"
-            + "  MongoToEnumerableConverter\n"
-            + "    MongoProject(product_id=[CAST(ITEM($0, 'product_id')):DOUBLE])\n"
-            + "      MongoTableScan(table=[[_foodmart, sales_fact_1998]])")
+            + "  KdbToEnumerableConverter\n"
+            + "    KdbProject(product_id=[CAST(ITEM($0, 'product_id')):DOUBLE])\n"
+            + "      KdbTableScan(table=[[_foodmart, sales_fact_1997]])\n"
+            + "  KdbToEnumerableConverter\n"
+            + "    KdbProject(product_id=[CAST(ITEM($0, 'product_id')):DOUBLE])\n"
+            + "      KdbTableScan(table=[[_foodmart, sales_fact_1998]])")
         .limit(2)
         .returns(
             checkResultUnordered(
@@ -296,7 +296,7 @@ public class MongoAdapterIT {
   @Test public void testFilterUnionPlan() {
     CalciteAssert.that()
         .enable(enabled())
-        .withModel(MONGO_FOODMART_MODEL)
+        .withModel(KDB_FOODMART_MODEL)
         .query("select * from (\n"
             + "  select * from \"sales_fact_1997\"\n"
             + "  union all\n"
@@ -306,7 +306,7 @@ public class MongoAdapterIT {
   }
 
   /** Tests that we don't generate multiple constraints on the same column.
-   * MongoDB doesn't like it. If there is an '=', it supersedes all other
+   * KdbDB doesn't like it. If there is an '=', it supersedes all other
    * operators. */
   @Test public void testFilterRedundant() {
     CalciteAssert.that()
@@ -316,7 +316,7 @@ public class MongoAdapterIT {
             "select * from zips where state > 'CA' and state < 'AZ' and state = 'OK'")
         .runs()
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{\n"
                     + "  \"$match\": {\n"
                     + "    \"state\": \"OK\"\n"
@@ -328,13 +328,13 @@ public class MongoAdapterIT {
   @Test public void testSelectWhere() {
     CalciteAssert.that()
         .enable(enabled())
-        .withModel(MONGO_FOODMART_MODEL)
+        .withModel(KDB_FOODMART_MODEL)
         .query(
             "select * from \"warehouse\" where \"warehouse_state_province\" = 'CA'")
-        .explainContains("PLAN=MongoToEnumerableConverter\n"
-            + "  MongoProject(warehouse_id=[CAST(ITEM($0, 'warehouse_id')):DOUBLE], warehouse_state_province=[CAST(ITEM($0, 'warehouse_state_province')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"])\n"
-            + "    MongoFilter(condition=[=(CAST(ITEM($0, 'warehouse_state_province')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\", 'CA')])\n"
-            + "      MongoTableScan(table=[[_foodmart, warehouse]])")
+        .explainContains("PLAN=KdbToEnumerableConverter\n"
+            + "  KdbProject(warehouse_id=[CAST(ITEM($0, 'warehouse_id')):DOUBLE], warehouse_state_province=[CAST(ITEM($0, 'warehouse_state_province')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"])\n"
+            + "    KdbFilter(condition=[=(CAST(ITEM($0, 'warehouse_state_province')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\", 'CA')])\n"
+            + "      KdbTableScan(table=[[_foodmart, warehouse]])")
         .returns(
             checkResultUnordered(
                 "warehouse_id=6; warehouse_state_province=CA",
@@ -344,7 +344,7 @@ public class MongoAdapterIT {
         .queryContains(
             // Per https://issues.apache.org/jira/browse/CALCITE-164,
             // $match must occur before $project for good performance.
-            mongoChecker(
+            kdbChecker(
                 "{\n"
                     + "  \"$match\": {\n"
                     + "    \"warehouse_state_province\": \"CA\"\n"
@@ -356,7 +356,7 @@ public class MongoAdapterIT {
   @Test public void testInPlan() {
     CalciteAssert.that()
         .enable(enabled())
-        .withModel(MONGO_FOODMART_MODEL)
+        .withModel(KDB_FOODMART_MODEL)
         .query("select \"store_id\", \"store_name\" from \"store\"\n"
             + "where \"store_name\" in ('Store 1', 'Store 10', 'Store 11', 'Store 15', 'Store 16', 'Store 24', 'Store 3', 'Store 7')")
         .returns(
@@ -370,7 +370,7 @@ public class MongoAdapterIT {
                 "store_id=16; store_name=Store 16",
                 "store_id=24; store_name=Store 24"))
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{\n"
                     + "  \"$match\": {\n"
                     + "    \"$or\": [\n"
@@ -404,7 +404,7 @@ public class MongoAdapterIT {
                 "{$project: {store_id: 1, store_name: 1}}"));
   }
 
-  /** Simple query based on the "mongo-zips" model. */
+  /** Simple query based on the "kdb-zips" model. */
   @Test public void testZips() {
     CalciteAssert.that()
         .enable(enabled())
@@ -419,11 +419,11 @@ public class MongoAdapterIT {
         .with(ZIPS)
         .query("select count(*) from zips")
         .returns("EXPR$0=29353\n")
-        .explainContains("PLAN=MongoToEnumerableConverter\n"
-            + "  MongoAggregate(group=[{}], EXPR$0=[COUNT()])\n"
-            + "    MongoTableScan(table=[[mongo_raw, zips]])")
+        .explainContains("PLAN=KdbToEnumerableConverter\n"
+            + "  KdbAggregate(group=[{}], EXPR$0=[COUNT()])\n"
+            + "    KdbTableScan(table=[[kdb_raw, zips]])")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$group: {_id: {}, 'EXPR$0': {$sum: 1}}}"));
   }
 
@@ -434,7 +434,7 @@ public class MongoAdapterIT {
         .query("select count(*)*2 from zips")
         .returns("EXPR$0=58706\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$group: {_id: {}, _0: {$sum: 1}}}",
                 "{$project: {'EXPR$0': {$multiply: ['$_0', {$literal: 2}]}}}"));
   }
@@ -448,7 +448,7 @@ public class MongoAdapterIT {
         .returns("EXPR$0=24\n"
             + "EXPR$0=53\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {STATE: '$state'}}",
                 "{$group: {_id: '$STATE', 'EXPR$0': {$sum: 1}}}",
                 "{$project: {STATE: '$_id', 'EXPR$0': '$EXPR$0'}}",
@@ -466,7 +466,7 @@ public class MongoAdapterIT {
         .returns("STATE=AK; C=195\n"
             + "STATE=AL; C=567\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {STATE: '$state'}}",
                 "{$group: {_id: '$STATE', C: {$sum: 1}}}",
                 "{$project: {STATE: '$_id', C: '$C'}}",
@@ -484,7 +484,7 @@ public class MongoAdapterIT {
         .returns("C=195; STATE=AK\n"
             + "C=567; STATE=AL\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {STATE: '$state'}}",
                 "{$group: {_id: '$STATE', C: {$sum: 1}}}",
                 "{$project: {STATE: '$_id', C: '$C'}}",
@@ -502,7 +502,7 @@ public class MongoAdapterIT {
         .returns("STATE=AK; A=2793\n"
             + "STATE=AL; A=7126\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {POP: '$pop', STATE: '$state'}}",
                 "{$group: {_id: '$STATE', A: {$avg: '$POP'}}}",
                 "{$project: {STATE: '$_id', A: '$A'}}",
@@ -519,7 +519,7 @@ public class MongoAdapterIT {
         .returns("STATE=AK; A=2793; S=544698; C=195\n"
             + "STATE=AL; A=7126; S=4040587; C=567\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {POP: '$pop', STATE: '$state'}}",
                 "{$group: {_id: '$STATE', _1: {$sum: '$POP'}, _2: {$sum: {$cond: [ {$eq: ['POP', null]}, 0, 1]}}}}",
                 "{$project: {STATE: '$_id', _1: '$_1', _2: '$_2'}}",
@@ -537,7 +537,7 @@ public class MongoAdapterIT {
             + "STATE=NY; C=1595\n"
             + "STATE=TX; C=1671\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {STATE: '$state'}}",
                 "{$group: {_id: '$STATE', C: {$sum: 1}}}",
                 "{$project: {STATE: '$_id', C: '$C'}}",
@@ -563,7 +563,7 @@ public class MongoAdapterIT {
             + "STATE=FL; C=826\n"
             + "STATE=CA; C=1523\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {STATE: '$state', POP: '$pop'}}",
                 "{$group: {_id: '$STATE', C: {$sum: 1}, _2: {$sum: '$POP'}}}",
                 "{$project: {STATE: '$_id', C: '$C', _2: '$_2'}}",
@@ -588,7 +588,7 @@ public class MongoAdapterIT {
         .returns("C=195; STATE=AK; MIN_POP=0; MAX_POP=32383; SUM_POP=544698\n"
             + "C=567; STATE=AL; MIN_POP=0; MAX_POP=44165; SUM_POP=4040587\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {POP: '$pop', STATE: '$state'}}",
                 "{$group: {_id: '$STATE', C: {$sum: 1}, MIN_POP: {$min: '$POP'}, MAX_POP: {$max: '$POP'}, SUM_POP: {$sum: '$POP'}}}",
                 "{$project: {STATE: '$_id', C: '$C', MIN_POP: '$MIN_POP', MAX_POP: '$MAX_POP', SUM_POP: '$SUM_POP'}}",
@@ -605,7 +605,7 @@ public class MongoAdapterIT {
         .returns("C=93; STATE=TX; CITY=HOUSTON\n"
             + "C=56; STATE=CA; CITY=LOS ANGELES\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {CITY: '$city', STATE: '$state'}}",
                 "{$group: {_id: {CITY: '$CITY', STATE: '$STATE'}, C: {$sum: 1}}}",
                 "{$project: {_id: 0, CITY: '$_id.CITY', STATE: '$_id.STATE', C: '$C'}}",
@@ -623,7 +623,7 @@ public class MongoAdapterIT {
         .returns("STATE=CA; CDC=1072\n"
             + "STATE=TX; CDC=1233\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{\n"
                     + "  \"$match\": {\n"
                     + "    \"$or\": [\n"
@@ -658,7 +658,7 @@ public class MongoAdapterIT {
             + "STATE=IL; CDC=1148\n"
             + "STATE=CA; CDC=1072\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {CITY: '$city', STATE: '$state'}}",
                 "{$group: {_id: {CITY: '$CITY', STATE: '$STATE'}}}",
                 "{$project: {_id: 0, CITY: '$_id.CITY', STATE: '$_id.STATE'}}",
@@ -677,7 +677,7 @@ public class MongoAdapterIT {
         .returns("STATE=AK; CITY=AKHIOK; ZERO=0\n"
             + "STATE=AK; CITY=AKIACHAK; ZERO=0\n")
         .queryContains(
-            mongoChecker(
+            kdbChecker(
                 "{$project: {CITY: '$city', STATE: '$state'}}",
                 "{$sort: {STATE: 1, CITY: 1}}",
                 "{$project: {STATE: 1, CITY: 1, ZERO: {$literal: 0}}}"));
@@ -691,13 +691,13 @@ public class MongoAdapterIT {
         .limit(2)
         .returns("STATE=CA; CITY=LOS ANGELES\n"
             + "STATE=CA; CITY=LOS ANGELES\n")
-        .explainContains("PLAN=MongoToEnumerableConverter\n"
-            + "  MongoProject(STATE=[CAST(ITEM($0, 'state')):VARCHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], CITY=[CAST(ITEM($0, 'city')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"])\n"
-            + "    MongoFilter(condition=[=(CAST(ITEM($0, 'state')):VARCHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\", 'CA')])\n"
-            + "      MongoTableScan(table=[[mongo_raw, zips]])");
+        .explainContains("PLAN=KdbToEnumerableConverter\n"
+            + "  KdbProject(STATE=[CAST(ITEM($0, 'state')):VARCHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], CITY=[CAST(ITEM($0, 'city')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"])\n"
+            + "    KdbFilter(condition=[=(CAST(ITEM($0, 'state')):VARCHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\", 'CA')])\n"
+            + "      KdbTableScan(table=[[kdb_raw, zips]])");
   }
 
-  /** MongoDB's predicates are handed (they can only accept literals on the
+  /** KdbDB's predicates are handed (they can only accept literals on the
    * right-hand size) so it's worth testing that we handle them right both
    * ways around. */
   @Test public void testFilterReversed() {
@@ -717,13 +717,13 @@ public class MongoAdapterIT {
             + "STATE=WV; CITY=ATHENS\n");
   }
 
-  /** MongoDB's predicates are handed (they can only accept literals on the
+  /** KdbDB's predicates are handed (they can only accept literals on the
    * right-hand size) so it's worth testing that we handle them right both
    * ways around.
    *
    * <p>Test case for
    * <a href="https://issues.apache.org/jira/browse/CALCITE-740">[CALCITE-740]
-   * Redundant WHERE clause causes wrong result in MongoDB adapter</a>. */
+   * Redundant WHERE clause causes wrong result in KdbDB adapter</a>. */
   @Test public void testFilterPair() {
     final int gt9k = 8125;
     final int lt9k = 21227;
@@ -778,12 +778,12 @@ public class MongoAdapterIT {
 
   /** Test case for
    * <a href="https://issues.apache.org/jira/browse/CALCITE-286">[CALCITE-286]
-   * Error casting MongoDB date</a>. */
+   * Error casting KdbDB date</a>. */
   @Test public void testDate() {
     // Assumes that you have created the following collection before running
     // this test:
     //
-    // $ mongo
+    // $ kdb
     // > use test
     // switched to db test
     // > db.createCollection("datatypes")
@@ -804,7 +804,7 @@ public class MongoAdapterIT {
             + "     {\n"
             + "       type: 'custom',\n"
             + "       name: 'test',\n"
-            + "       factory: 'org.apache.calcite.adapter.kdb.MongoSchemaFactory',\n"
+            + "       factory: 'org.apache.calcite.adapter.kdb.KdbSchemaFactory',\n"
             + "       operand: {\n"
             + "         host: 'localhost',\n"
             + "         database: 'test'\n"
@@ -818,7 +818,7 @@ public class MongoAdapterIT {
 
   /** Test case for
    * <a href="https://issues.apache.org/jira/browse/CALCITE-665">[CALCITE-665]
-   * ClassCastException in MongoDB adapter</a>. */
+   * ClassCastException in KdbDB adapter</a>. */
   @Test public void testCountViaInt() {
     CalciteAssert.that()
         .enable(enabled())
@@ -839,4 +839,4 @@ public class MongoAdapterIT {
   }
 }
 
-// End MongoAdapterIT.java
+// End KdbAdapterIT.java

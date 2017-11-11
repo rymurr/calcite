@@ -136,7 +136,7 @@ Like base class <a href="#schema">Schema</a>, occurs within `root.schemas`.
 {
   name: 'mongo',
   type: 'custom',
-  factory: 'org.apache.calcite.adapter.mongodb.MongoSchemaFactory',
+  factory: 'org.apache.calcite.adapter.kdb.KdbSchemaFactory',
   operand: {
     host: 'localhost',
     database: 'test'

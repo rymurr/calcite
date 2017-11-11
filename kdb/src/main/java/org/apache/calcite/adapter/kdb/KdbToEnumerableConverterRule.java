@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.calcite.adapter.mongodb;
+package org.apache.calcite.adapter.kdb;
 
 import org.apache.calcite.adapter.enumerable.EnumerableConvention;
 import org.apache.calcite.plan.RelTraitSet;
@@ -23,21 +23,21 @@ import org.apache.calcite.rel.convert.ConverterRule;
 
 /**
  * Rule to convert a relational expression from
- * {@link MongoRel#CONVENTION} to {@link EnumerableConvention}.
+ * {@link KdbRel#CONVENTION} to {@link EnumerableConvention}.
  */
-public class MongoToEnumerableConverterRule extends ConverterRule {
+public class KdbToEnumerableConverterRule extends ConverterRule {
   public static final ConverterRule INSTANCE =
-      new MongoToEnumerableConverterRule();
+      new KdbToEnumerableConverterRule();
 
-  private MongoToEnumerableConverterRule() {
-    super(RelNode.class, MongoRel.CONVENTION, EnumerableConvention.INSTANCE,
-        "MongoToEnumerableConverterRule");
+  private KdbToEnumerableConverterRule() {
+    super(RelNode.class, KdbRel.CONVENTION, EnumerableConvention.INSTANCE,
+        "KdbToEnumerableConverterRule");
   }
 
   @Override public RelNode convert(RelNode rel) {
     RelTraitSet newTraitSet = rel.getTraitSet().replace(getOutConvention());
-    return new MongoToEnumerableConverter(rel.getCluster(), newTraitSet, rel);
+    return new KdbToEnumerableConverter(rel.getCluster(), newTraitSet, rel);
   }
 }
 
-// End MongoToEnumerableConverterRule.java
+// End KdbToEnumerableConverterRule.java

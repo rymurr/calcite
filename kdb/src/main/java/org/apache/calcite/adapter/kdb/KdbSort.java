@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.calcite.adapter.mongodb;
+package org.apache.calcite.adapter.kdb;
 
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
@@ -37,11 +37,11 @@ import java.util.List;
 * Implementation of {@link org.apache.calcite.rel.core.Sort}
 * relational expression in MongoDB.
 */
-public class MongoSort extends Sort implements MongoRel {
-  public MongoSort(RelOptCluster cluster, RelTraitSet traitSet,
-      RelNode child, RelCollation collation, RexNode offset, RexNode fetch) {
+public class KdbSort extends Sort implements KdbRel {
+  public KdbSort(RelOptCluster cluster, RelTraitSet traitSet,
+                 RelNode child, RelCollation collation, RexNode offset, RexNode fetch) {
     super(cluster, traitSet, child, collation, offset, fetch);
-    assert getConvention() == MongoRel.CONVENTION;
+    assert getConvention() == KdbRel.CONVENTION;
     assert getConvention() == child.getConvention();
   }
 
@@ -52,7 +52,7 @@ public class MongoSort extends Sort implements MongoRel {
 
   @Override public Sort copy(RelTraitSet traitSet, RelNode input,
       RelCollation newCollation, RexNode offset, RexNode fetch) {
-    return new MongoSort(getCluster(), traitSet, input, collation, offset,
+    return new KdbSort(getCluster(), traitSet, input, collation, offset,
         fetch);
   }
 
@@ -101,4 +101,4 @@ public class MongoSort extends Sort implements MongoRel {
   }
 }
 
-// End MongoSort.java
+// End KdbSort.java

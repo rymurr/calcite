@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.calcite.adapter.mongodb;
+package org.apache.calcite.adapter.kdb;
 
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
@@ -35,27 +35,27 @@ import java.util.List;
  * <p> Additional operations might be applied,
  * using the "find" or "aggregate" methods.</p>
  */
-public class MongoTableScan extends TableScan implements MongoRel {
-  final MongoTable mongoTable;
+public class KdbTableScan extends TableScan implements KdbRel {
+  final KdbTable kdbTable;
   final RelDataType projectRowType;
 
   /**
-   * Creates a MongoTableScan.
+   * Creates a KdbTableScan.
    *
    * @param cluster        Cluster
    * @param traitSet       Traits
    * @param table          Table
-   * @param mongoTable     MongoDB table
+   * @param kdbTable     MongoDB table
    * @param projectRowType Fields and types to project; null to project raw row
    */
-  protected MongoTableScan(RelOptCluster cluster, RelTraitSet traitSet,
-      RelOptTable table, MongoTable mongoTable, RelDataType projectRowType) {
+  protected KdbTableScan(RelOptCluster cluster, RelTraitSet traitSet,
+                         RelOptTable table, KdbTable kdbTable, RelDataType projectRowType) {
     super(cluster, traitSet, table);
-    this.mongoTable = mongoTable;
+    this.kdbTable = kdbTable;
     this.projectRowType = projectRowType;
 
-    assert mongoTable != null;
-    assert getConvention() == MongoRel.CONVENTION;
+    assert kdbTable != null;
+    assert getConvention() == KdbRel.CONVENTION;
   }
 
   @Override public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
@@ -76,16 +76,16 @@ public class MongoTableScan extends TableScan implements MongoRel {
   }
 
   @Override public void register(RelOptPlanner planner) {
-    planner.addRule(MongoToEnumerableConverterRule.INSTANCE);
-    for (RelOptRule rule : MongoRules.RULES) {
+    planner.addRule(KdbToEnumerableConverterRule.INSTANCE);
+    for (RelOptRule rule : KdbRules.RULES) {
       planner.addRule(rule);
     }
   }
 
   public void implement(Implementor implementor) {
-    implementor.mongoTable = mongoTable;
+    implementor.kdbTable = kdbTable;
     implementor.table = table;
   }
 }
 
-// End MongoTableScan.java
+// End KdbTableScan.java

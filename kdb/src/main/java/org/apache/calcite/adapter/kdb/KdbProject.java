@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.calcite.adapter.mongodb;
+package org.apache.calcite.adapter.kdb;
 
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.plan.RelOptCluster;
@@ -36,24 +36,24 @@ import java.util.List;
  * Implementation of {@link org.apache.calcite.rel.core.Project}
  * relational expression in MongoDB.
  */
-public class MongoProject extends Project implements MongoRel {
-  public MongoProject(RelOptCluster cluster, RelTraitSet traitSet,
-      RelNode input, List<? extends RexNode> projects, RelDataType rowType) {
+public class KdbProject extends Project implements KdbRel {
+  public KdbProject(RelOptCluster cluster, RelTraitSet traitSet,
+                    RelNode input, List<? extends RexNode> projects, RelDataType rowType) {
     super(cluster, traitSet, input, projects, rowType);
-    assert getConvention() == MongoRel.CONVENTION;
+    assert getConvention() == KdbRel.CONVENTION;
     assert getConvention() == input.getConvention();
   }
 
   @Deprecated // to be removed before 2.0
-  public MongoProject(RelOptCluster cluster, RelTraitSet traitSet,
-      RelNode input, List<RexNode> projects, RelDataType rowType, int flags) {
+  public KdbProject(RelOptCluster cluster, RelTraitSet traitSet,
+                    RelNode input, List<RexNode> projects, RelDataType rowType, int flags) {
     this(cluster, traitSet, input, projects, rowType);
     Util.discard(flags);
   }
 
   @Override public Project copy(RelTraitSet traitSet, RelNode input,
       List<RexNode> projects, RelDataType rowType) {
-    return new MongoProject(getCluster(), traitSet, input, projects,
+    return new KdbProject(getCluster(), traitSet, input, projects,
         rowType);
   }
 
@@ -65,17 +65,17 @@ public class MongoProject extends Project implements MongoRel {
   public void implement(Implementor implementor) {
     implementor.visitChild(0, getInput());
 
-    final MongoRules.RexToMongoTranslator translator =
-        new MongoRules.RexToMongoTranslator(
+    final KdbRules.RexToMongoTranslator translator =
+        new KdbRules.RexToMongoTranslator(
             (JavaTypeFactory) getCluster().getTypeFactory(),
-            MongoRules.mongoFieldNames(getInput().getRowType()));
+            KdbRules.mongoFieldNames(getInput().getRowType()));
     final List<String> items = new ArrayList<String>();
     for (Pair<RexNode, String> pair : getNamedProjects()) {
       final String name = pair.right;
       final String expr = pair.left.accept(translator);
       items.add(expr.equals("'$" + name + "'")
-          ? MongoRules.maybeQuote(name) + ": 1"
-          : MongoRules.maybeQuote(name) + ": " + expr);
+          ? KdbRules.maybeQuote(name) + ": 1"
+          : KdbRules.maybeQuote(name) + ": " + expr);
     }
     final String findString = Util.toString(items, "{", ", ", "}");
     final String aggregateString = "{$project: " + findString + "}";
@@ -84,4 +84,4 @@ public class MongoProject extends Project implements MongoRel {
   }
 }
 
-// End MongoProject.java
+// End KdbProject.java

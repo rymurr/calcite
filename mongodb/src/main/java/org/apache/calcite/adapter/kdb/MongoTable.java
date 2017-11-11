@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.calcite.adapter.mongodb;
+package org.apache.calcite.adapter.kdb;
 
 import org.apache.calcite.adapter.java.AbstractQueryableTable;
 import org.apache.calcite.linq4j.AbstractEnumerable;
@@ -205,7 +205,7 @@ public class MongoTable extends AbstractQueryableTable
    * version of mongo.
 
    * <p>Helper method for
-   * {@link org.apache.calcite.adapter.mongodb.MongoTable#aggregate}.
+   * {@link org.apache.calcite.adapter.kdb.MongoTable#aggregate}.
    *
    * @param dbCollection Collection
    * @param first First aggregate action
@@ -218,7 +218,7 @@ public class MongoTable extends AbstractQueryableTable
   }
 
   /** Implementation of {@link org.apache.calcite.linq4j.Queryable} based on
-   * a {@link org.apache.calcite.adapter.mongodb.MongoTable}.
+   * a {@link org.apache.calcite.adapter.kdb.MongoTable}.
    *
    * @param <T> element type */
   public static class MongoQueryable<T> extends AbstractTableQueryable<T> {
@@ -244,7 +244,7 @@ public class MongoTable extends AbstractQueryableTable
 
     /** Called via code-generation.
      *
-     * @see org.apache.calcite.adapter.mongodb.MongoMethod#MONGO_QUERYABLE_AGGREGATE
+     * @see org.apache.calcite.adapter.kdb.MongoMethod#MONGO_QUERYABLE_AGGREGATE
      */
     @SuppressWarnings("UnusedDeclaration")
     public Enumerable<Object> aggregate(List<Map.Entry<String, Class>> fields,
@@ -254,7 +254,7 @@ public class MongoTable extends AbstractQueryableTable
 
     /** Called via code-generation.
      *
-     * @see org.apache.calcite.adapter.mongodb.MongoMethod#MONGO_QUERYABLE_FIND
+     * @see org.apache.calcite.adapter.kdb.MongoMethod#MONGO_QUERYABLE_FIND
      */
     @SuppressWarnings("UnusedDeclaration")
     public Enumerable<Object> find(String filterJson,
