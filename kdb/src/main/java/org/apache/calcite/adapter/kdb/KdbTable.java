@@ -16,6 +16,7 @@
  */
 package org.apache.calcite.adapter.kdb;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.calcite.adapter.java.AbstractQueryableTable;
 import org.apache.calcite.linq4j.AbstractEnumerable;
 import org.apache.calcite.linq4j.Enumerable;
@@ -27,15 +28,15 @@ import org.apache.calcite.plan.RelOptTable;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
+import org.apache.calcite.rel.type.RelProtoDataType;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.TranslatableTable;
 import org.apache.calcite.schema.impl.AbstractTableQueryable;
 import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Table based on a MongoDB collection.
@@ -43,11 +44,22 @@ import java.util.Map;
 public class KdbTable extends AbstractQueryableTable
     implements TranslatableTable {
   private final String collectionName;
+  private final KdbConnection conn;
+  private final RelProtoDataType protoRowType;
 
+
+  private static final Map<Character, SqlTypeName> allTypes = ImmutableMap.<Character, SqlTypeName>builder()
+          .put('t', SqlTypeName.TIME)
+          .put('s', SqlTypeName.VARCHAR)
+          .put('i', SqlTypeName.INTEGER)
+          .put('f', SqlTypeName.FLOAT)
+          .build();
   /** Creates a KdbTable. */
-  KdbTable(String collectionName) {
+  KdbTable(String collectionName, KdbConnection conn, RelProtoDataType protoRowType) {
     super(Object[].class);
     this.collectionName = collectionName;
+    this.conn = conn;
+    this.protoRowType = protoRowType;
   }
 
   public String toString() {
@@ -55,12 +67,17 @@ public class KdbTable extends AbstractQueryableTable
   }
 
   public RelDataType getRowType(RelDataTypeFactory typeFactory) {
-    final RelDataType mapType =
-        typeFactory.createMapType(
-            typeFactory.createSqlType(SqlTypeName.VARCHAR),
-            typeFactory.createTypeWithNullability(
-                typeFactory.createSqlType(SqlTypeName.ANY), true));
-    return typeFactory.builder().add("_MAP", mapType).build();
+    if (protoRowType != null) {
+      return protoRowType.apply(typeFactory);
+    }
+    final List<RelDataType> types = new ArrayList<>();
+    final List<String> names = new ArrayList<>();
+    Pair<String[], char[]> o = conn.getSchema(collectionName);
+    for (char c: o.right) {
+      types.add(typeFactory.createSqlType(allTypes.get(c)));
+    }
+    names.addAll(Arrays.asList(o.left));
+    return typeFactory.createStructType(Pair.zip(names, types));
   }
 
   public <T> Queryable<T> asQueryable(QueryProvider queryProvider,

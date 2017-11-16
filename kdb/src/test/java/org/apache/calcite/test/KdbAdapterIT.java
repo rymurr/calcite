@@ -16,6 +16,9 @@
  */
 package org.apache.calcite.test;
 
+import org.apache.calcite.avatica.util.Casing;
+import org.apache.calcite.config.CalciteConnectionProperty;
+import org.apache.calcite.config.Lex;
 import org.apache.calcite.linq4j.Ord;
 import org.apache.calcite.util.Bug;
 import org.apache.calcite.util.Pair;
@@ -168,13 +171,13 @@ public class KdbAdapterIT {
   @Test public void testSort() {
     CalciteAssert.that()
         .enable(enabled())
+        .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select * from zips order by state")
-        .returnsCount(29353)
+        .query("select * from trade order by sym")
+        .returnsCount(1)
         .explainContains("PLAN=KdbToEnumerableConverter\n"
-            + "  KdbSort(sort0=[$4], dir0=[ASC])\n"
-            + "    KdbProject(CITY=[CAST(ITEM($0, 'city')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], LONGITUDE=[CAST(ITEM(ITEM($0, 'loc'), 0)):FLOAT], LATITUDE=[CAST(ITEM(ITEM($0, 'loc'), 1)):FLOAT], POP=[CAST(ITEM($0, 'pop')):INTEGER], STATE=[CAST(ITEM($0, 'state')):VARCHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], ID=[CAST(ITEM($0, '_id')):VARCHAR(5) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"])\n"
-            + "      KdbTableScan(table=[[kdb_raw, zips]])");
+            + "  KdbSort(sort0=[$1], dir0=[ASC])\n"
+            + "    KdbTableScan(table=[[q, trade]])");
   }
 
   @Test public void testSortLimit() {

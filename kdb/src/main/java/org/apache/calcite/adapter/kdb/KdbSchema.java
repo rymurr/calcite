@@ -43,7 +43,7 @@ public class KdbSchema extends AbstractSchema {
   @Override protected Map<String, Table> getTableMap() {
     final ImmutableMap.Builder<String, Table> builder = ImmutableMap.builder();
     for (String collectionName : kdb.getTables()) {
-      builder.put(collectionName, new KdbTable(collectionName));
+      builder.put(collectionName, new KdbTable(collectionName, kdb, null));
     }
     return builder.build();
   }

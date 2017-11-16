@@ -47,8 +47,18 @@ public class KdbIterable implements Iterable<Object[]> {
         private Object[] getCurrent() throws ArrayIndexOutOfBoundsException {
             Object[] o = new Object[resultSet.y.length];
             for (int i=0;i<resultSet.y.length;i++) {
-                o[i] = ((Object[])resultSet.y[i])[index++];
+                Object val = resultSet.y[i];
+                if (val instanceof double[]) {
+                    o[i] = ((double[])val)[index];
+                } else if (val instanceof int[]) {
+                    o[i] = ((int[])val)[index];
+                } else if (val instanceof long[]) {
+                    o[i] = ((long[])val)[index];
+                } else {
+                    o[i] = ((Object[]) resultSet.y[i])[index];
+                }
             }
+            index++;
             return o;
         }
     }
