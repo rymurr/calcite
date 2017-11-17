@@ -261,7 +261,7 @@ public class KdbAdapterIT {
 
   @Test public void testFilterSortDesc() {
     CalciteAssert.that()
-        .enable(enabled())
+        .enable(enabled())//todo
         .with(ZIPS)
         .query("select * from zips\n"
             + "where pop BETWEEN 20000 AND 20100\n"
@@ -314,18 +314,14 @@ public class KdbAdapterIT {
   @Test public void testFilterRedundant() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
         .query(
-            "select * from zips where state > 'CA' and state < 'AZ' and state = 'OK'")
+            "select * from trade where sym > 'a' and sym < 'b' and sym = 'b'")
         .runs()
         .queryContains(
             kdbChecker(
-                "{\n"
-                    + "  \"$match\": {\n"
-                    + "    \"state\": \"OK\"\n"
-                    + "  }\n"
-                    + "}",
-                "{$project: {CITY: '$city', LONGITUDE: '$loc[0]', LATITUDE: '$loc[1]', POP: '$pop', STATE: '$state', ID: '$_id'}}"));
+                "filter: sym = `b"));
   }
 
   @Test public void testSelectWhere() {
@@ -411,9 +407,10 @@ public class KdbAdapterIT {
   @Test public void testZips() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select state, city from zips")
-        .returnsCount(29353);
+        .query("select sym, price from trade")
+        .returnsCount(3);
   }
 
   @Test public void testCountGroupByEmpty() {
@@ -674,8 +671,9 @@ public class KdbAdapterIT {
   @Test public void testProject() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select state, city, 0 as zero from zips order by state, city")
+        .query("select sym, price, 0 as zero from trade order by sym, price")
         .limit(2)
         .returns("STATE=AK; CITY=AKHIOK; ZERO=0\n"
             + "STATE=AK; CITY=AKIACHAK; ZERO=0\n")
@@ -710,16 +708,14 @@ public class KdbAdapterIT {
         .with(ZIPS)
         .query("select price, sym from trade where 150 < size")
         .limit(2)
-        .returns("STATE=WV; CITY=BLUEWELL\n"
-            + "STATE=WV; CITY=ATHENS\n");
+        .returns("price=12.75; sym=b\n");
     CalciteAssert.that()
         .enable(enabled())
             .with(Lex.JAVA)
         .with(ZIPS)
         .query("select price, sym from trade where size > 150")
         .limit(1)
-        .returns("price=12.75; sym=b\n"
-            + "price=12.75; sym=b\n");
+        .returns("price=12.75; sym=b\n");
   }
 
   /** KdbDB's predicates are handed (they can only accept literals on the

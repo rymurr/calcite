@@ -50,7 +50,7 @@ public class KdbTable extends AbstractQueryableTable
 
   private static final Map<Character, SqlTypeName> allTypes = ImmutableMap.<Character, SqlTypeName>builder()
           .put('t', SqlTypeName.TIME)
-          .put('s', SqlTypeName.VARCHAR)
+          .put('s', SqlTypeName.CHAR)
           .put('i', SqlTypeName.INTEGER)
           .put('f', SqlTypeName.FLOAT)
           .build();

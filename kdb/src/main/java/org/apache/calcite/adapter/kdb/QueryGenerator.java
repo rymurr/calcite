@@ -38,7 +38,10 @@ public class QueryGenerator {
     }
 
     private static StringBuffer addMatch(StringBuffer buffer, Map<String, String> ops) {
-
+        if (ops.containsKey("filter")){
+            buffer.append(" where ");
+            buffer.append(ops.get("filter"));
+        }
         return buffer;
     }
 

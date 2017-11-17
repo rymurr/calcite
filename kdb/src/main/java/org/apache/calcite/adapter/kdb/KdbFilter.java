@@ -16,6 +16,9 @@
  */
 package org.apache.calcite.adapter.kdb;
 
+import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
@@ -28,6 +31,7 @@ import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.JsonBuilder;
 import org.apache.calcite.util.Pair;
 
@@ -87,13 +91,11 @@ public class KdbFilter extends Filter implements KdbRel {
     }
 
     private String translateMatch(RexNode condition) {
-      Map<String, Object> map = builder.map();
-      map.put("$match", translateOr(condition));
-      return builder.toJsonString(map);
+      return "filter: " + translateOr(condition);
     }
 
-    private Object translateOr(RexNode condition) {
-      List<Object> list = new ArrayList<Object>();
+    private String translateOr(RexNode condition) {
+      List<String> list = new ArrayList<String>();
       for (RexNode node : RelOptUtil.disjunctions(condition)) {
         list.add(translateAnd(node));
       }
@@ -101,41 +103,44 @@ public class KdbFilter extends Filter implements KdbRel {
       case 1:
         return list.get(0);
       default:
-        Map<String, Object> map = builder.map();
-        map.put("$or", list);
-        return map;
+        throw new UnsupportedOperationException("Haven't implemented or for kdb");
       }
     }
 
     /** Translates a condition that may be an AND of other conditions. Gathers
      * together conditions that apply to the same field. */
-    private Map<String, Object> translateAnd(RexNode node0) {
+    private String translateAnd(RexNode node0) {
       eqMap.clear();
       multimap.clear();
       for (RexNode node : RelOptUtil.conjunctions(node0)) {
         translateMatch2(node);
       }
-      Map<String, Object> map = builder.map();
+      List<String> predicates = Lists.newArrayList();
       for (Map.Entry<String, RexLiteral> entry : eqMap.entrySet()) {
         multimap.removeAll(entry.getKey());
-        map.put(entry.getKey(), literalValue(entry.getValue()));
+        predicates.add(entry.getKey() + " = " + literalValue(entry.getValue()));
       }
+
       for (Map.Entry<String, Collection<Pair<String, RexLiteral>>> entry
           : multimap.asMap().entrySet()) {
-        Map<String, Object> map2 = builder.map();
         for (Pair<String, RexLiteral> s : entry.getValue()) {
-          addPredicate(map2, s.left, literalValue(s.right));
+          StringBuffer buffer = new StringBuffer();
+          buffer.append(entry.getKey());
+          buffer.append(" ");
+          buffer.append(s.left);
+          buffer.append(" ");
+          buffer.append(literalValue(s.right));
+          predicates.add(buffer.toString());
         }
-        map.put(entry.getKey(), map2);
       }
-      return map;
+      return Joiner.on(", ").join(predicates);
     }
 
-    private void addPredicate(Map<String, Object> map, String op, Object v) {
+    private void addPredicate(Map<String, String> map, String op, Object v) {
       if (map.containsKey(op) && stronger(op, map.get(op), v)) {
         return;
       }
-      map.put(op, v);
+      map.put(op, v.toString());
     }
 
     /** Returns whether {@code v0} is a stronger value for operator {@code key}
@@ -160,6 +165,9 @@ public class KdbFilter extends Filter implements KdbRel {
     }
 
     private static Object literalValue(RexLiteral literal) {
+      if (literal.getTypeName() == SqlTypeName.CHAR) {
+        return "`" + ((String)literal.getValue2()).replaceAll("'", "");
+      }
       return literal.getValue2();
     }
 
@@ -168,13 +176,13 @@ public class KdbFilter extends Filter implements KdbRel {
       case EQUALS:
         return translateBinary(null, null, (RexCall) node);
       case LESS_THAN:
-        return translateBinary("<", "$gt", (RexCall) node);
+        return translateBinary("<", ">", (RexCall) node);
       case LESS_THAN_OR_EQUAL:
         return translateBinary("$lte", "$gte", (RexCall) node);
       case NOT_EQUALS:
         return translateBinary("$ne", "$ne", (RexCall) node);
       case GREATER_THAN:
-        return translateBinary(">", "$lt", (RexCall) node);
+        return translateBinary(">", "<", (RexCall) node);
       case GREATER_THAN_OR_EQUAL:
         return translateBinary("$gte", "$lte", (RexCall) node);
       default:
