@@ -168,13 +168,13 @@ public class KdbFilter extends Filter implements KdbRel {
       case EQUALS:
         return translateBinary(null, null, (RexCall) node);
       case LESS_THAN:
-        return translateBinary("$lt", "$gt", (RexCall) node);
+        return translateBinary("<", "$gt", (RexCall) node);
       case LESS_THAN_OR_EQUAL:
         return translateBinary("$lte", "$gte", (RexCall) node);
       case NOT_EQUALS:
         return translateBinary("$ne", "$ne", (RexCall) node);
       case GREATER_THAN:
-        return translateBinary("$gt", "$lt", (RexCall) node);
+        return translateBinary(">", "$lt", (RexCall) node);
       case GREATER_THAN_OR_EQUAL:
         return translateBinary("$gte", "$lte", (RexCall) node);
       default:

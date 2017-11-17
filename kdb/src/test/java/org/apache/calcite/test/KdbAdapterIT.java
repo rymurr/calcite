@@ -173,10 +173,10 @@ public class KdbAdapterIT {
         .enable(enabled())
         .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select * from trade order by sym")
-        .returnsCount(1)
+        .query("select * from trade order by sym desc")
+        .returnsCount(3)
         .explainContains("PLAN=KdbToEnumerableConverter\n"
-            + "  KdbSort(sort0=[$1], dir0=[ASC])\n"
+            + "  KdbSort(sort0=[$1], dir0=[DESC])\n"
             + "    KdbTableScan(table=[[q, trade]])");
   }
 
@@ -706,18 +706,20 @@ public class KdbAdapterIT {
   @Test public void testFilterReversed() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select state, city from zips where 'WI' < state")
+        .query("select price, sym from trade where 150 < size")
         .limit(2)
         .returns("STATE=WV; CITY=BLUEWELL\n"
             + "STATE=WV; CITY=ATHENS\n");
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select state, city from zips where state > 'WI'")
-        .limit(2)
-        .returns("STATE=WV; CITY=BLUEWELL\n"
-            + "STATE=WV; CITY=ATHENS\n");
+        .query("select price, sym from trade where size > 150")
+        .limit(1)
+        .returns("price=12.75; sym=b\n"
+            + "price=12.75; sym=b\n");
   }
 
   /** KdbDB's predicates are handed (they can only accept literals on the

@@ -16,6 +16,10 @@
  */
 package org.apache.calcite.adapter.kdb;
 
+import com.google.common.base.Joiner;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
@@ -32,6 +36,7 @@ import org.apache.calcite.util.Util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
 * Implementation of {@link org.apache.calcite.rel.core.Sort}
@@ -56,15 +61,16 @@ public class KdbSort extends Sort implements KdbRel {
         fetch);
   }
 
+  @SuppressWarnings("Duplicates")
   public void implement(Implementor implementor) {
     implementor.visitChild(0, getInput());
     if (!collation.getFieldCollations().isEmpty()) {
-      final List<String> keys = new ArrayList<String>();
+      final Multimap<String, String> keys = HashMultimap.create();
       final List<RelDataTypeField> fields = getRowType().getFieldList();
       for (RelFieldCollation fieldCollation : collation.getFieldCollations()) {
         final String name =
             fields.get(fieldCollation.getFieldIndex()).getName();
-        keys.add(name + ": " + direction(fieldCollation));
+        keys.put(direction(fieldCollation), name);
         if (false) {
           // TODO: NULLS FIRST and NULLS LAST
           switch (fieldCollation.nullDirection) {
@@ -75,8 +81,7 @@ public class KdbSort extends Sort implements KdbRel {
           }
         }
       }
-      implementor.add(null,
-          "{$sort: " + Util.toString(keys, "{", ", ", "}") + "}");
+      implementor.add(null, "sort: " + sort(keys));
     }
     if (offset != null) {
       implementor.add(null,
@@ -88,15 +93,27 @@ public class KdbSort extends Sort implements KdbRel {
     }
   }
 
-  private int direction(RelFieldCollation fieldCollation) {
+  private String sort(Multimap<String, String> fields) {
+    StringBuffer buffer = new StringBuffer();
+    for (String d: fields.keys()) {
+      String f = '`' + Joiner.on('`').join(fields.get(d));
+      buffer.append(f);
+      buffer.append(" ");
+      buffer.append(d);
+      buffer.append(" ");
+    }
+    return buffer.toString();
+  }
+
+  private String direction(RelFieldCollation fieldCollation) {
     switch (fieldCollation.getDirection()) {
     case DESCENDING:
     case STRICTLY_DESCENDING:
-      return -1;
+      return "xdesc";
     case ASCENDING:
     case STRICTLY_ASCENDING:
     default:
-      return 1;
+      return "xasc";
     }
   }
 }
