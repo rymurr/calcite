@@ -5,3 +5,5 @@
 * finish the unit tests!
 * add unit tests for Joins!
 * sort out queries wrt to 'time' column and other illegaal sql names.
+* make sure 'in' works correctly
+* test ignored tests
