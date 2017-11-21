@@ -33,6 +33,7 @@ import org.hamcrest.CoreMatchers;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -477,9 +478,10 @@ public class KdbAdapterIT {
     // Note extra $project compared to testGroupByOneColumn.
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
         .query(
-            "select count(*) as c, state from zips group by state order by state")
+            "select count(*) as c, sym from trade group by sym order by sym")
         .limit(2)
         .returns("C=195; STATE=AK\n"
             + "C=567; STATE=AL\n")
@@ -796,25 +798,13 @@ public class KdbAdapterIT {
     //     "value" : 1231,
     //     "ownerId" : "531e7789e4b0853ddb861313"
     //   } )
+    String current_date = new Date(System.currentTimeMillis()).toString();
     CalciteAssert.that()
         .enable(enabled())
-        .withModel("{\n"
-            + "  version: '1.0',\n"
-            + "  defaultSchema: 'test',\n"
-            + "   schemas: [\n"
-            + "     {\n"
-            + "       type: 'custom',\n"
-            + "       name: 'test',\n"
-            + "       factory: 'org.apache.calcite.adapter.kdb.KdbSchemaFactory',\n"
-            + "       operand: {\n"
-            + "         host: 'localhost',\n"
-            + "         database: 'test'\n"
-            + "       }\n"
-            + "     }\n"
-            + "   ]\n"
-            + "}")
-        .query("select cast(_MAP['date'] as DATE) from \"datatypes\"")
-        .returnsUnordered("EXPR$0=2012-09-05");
+            .with(Lex.JAVA)
+            .with(ZIPS)
+        .query("select cast(current_date as DATE), price from trade where price > 11.0 ")
+        .returnsUnordered("EXPR$0=" + current_date + "; price=12.75");
   }
 
   /** Test case for

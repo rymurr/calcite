@@ -65,10 +65,10 @@ public class KdbRules {
   protected static final Logger LOGGER = CalciteTrace.getPlannerTracer();
 
   public static final RelOptRule[] RULES = {
-      MongoSortRule.INSTANCE,
-      MongoFilterRule.INSTANCE,
-      MongoProjectRule.INSTANCE,
-      MongoAggregateRule.INSTANCE,
+      KdbSortRule.INSTANCE,
+      KdbFilterRule.INSTANCE,
+      KdbProjectRule.INSTANCE,
+      KdbAggregateRule.INSTANCE,
   };
 
   /** Returns 'string' if it is a call to item['string'], null otherwise. */
@@ -130,27 +130,27 @@ public class KdbRules {
     private final JavaTypeFactory typeFactory;
     private final List<String> inFields;
 
-    private static final Map<SqlOperator, String> MONGO_OPERATORS =
+    private static final Map<SqlOperator, String> KDB_OPERATORS =
         new HashMap<SqlOperator, String>();
 
     static {
       // Arithmetic
-      MONGO_OPERATORS.put(SqlStdOperatorTable.DIVIDE, "$divide");
-      MONGO_OPERATORS.put(SqlStdOperatorTable.MULTIPLY, "$multiply");
-      MONGO_OPERATORS.put(SqlStdOperatorTable.MOD, "$mod");
-      MONGO_OPERATORS.put(SqlStdOperatorTable.PLUS, "$add");
-      MONGO_OPERATORS.put(SqlStdOperatorTable.MINUS, "$subtract");
+      KDB_OPERATORS.put(SqlStdOperatorTable.DIVIDE, "$divide");
+      KDB_OPERATORS.put(SqlStdOperatorTable.MULTIPLY, "$multiply");
+      KDB_OPERATORS.put(SqlStdOperatorTable.MOD, "$mod");
+      KDB_OPERATORS.put(SqlStdOperatorTable.PLUS, "$add");
+      KDB_OPERATORS.put(SqlStdOperatorTable.MINUS, "$subtract");
       // Boolean
-      MONGO_OPERATORS.put(SqlStdOperatorTable.AND, "$and");
-      MONGO_OPERATORS.put(SqlStdOperatorTable.OR, "$or");
-      MONGO_OPERATORS.put(SqlStdOperatorTable.NOT, "$not");
+      KDB_OPERATORS.put(SqlStdOperatorTable.AND, "$and");
+      KDB_OPERATORS.put(SqlStdOperatorTable.OR, "$or");
+      KDB_OPERATORS.put(SqlStdOperatorTable.NOT, "$not");
       // Comparison
-      MONGO_OPERATORS.put(SqlStdOperatorTable.EQUALS, "$eq");
-      MONGO_OPERATORS.put(SqlStdOperatorTable.NOT_EQUALS, "$ne");
-      MONGO_OPERATORS.put(SqlStdOperatorTable.GREATER_THAN, "$gt");
-      MONGO_OPERATORS.put(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL, "$gte");
-      MONGO_OPERATORS.put(SqlStdOperatorTable.LESS_THAN, "$lt");
-      MONGO_OPERATORS.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL, "$lte");
+      KDB_OPERATORS.put(SqlStdOperatorTable.EQUALS, "$eq");
+      KDB_OPERATORS.put(SqlStdOperatorTable.NOT_EQUALS, "$ne");
+      KDB_OPERATORS.put(SqlStdOperatorTable.GREATER_THAN, "$gt");
+      KDB_OPERATORS.put(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL, "$gte");
+      KDB_OPERATORS.put(SqlStdOperatorTable.LESS_THAN, "$lt");
+      KDB_OPERATORS.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL, "$lte");
     }
 
     protected RexToMongoTranslator(JavaTypeFactory typeFactory,
@@ -171,8 +171,8 @@ public class KdbRules {
     }
 
     @Override public String visitInputRef(RexInputRef inputRef) {
-      return maybeQuote(
-          "$" + inFields.get(inputRef.getIndex()));
+      return inFields.get(inputRef.getIndex());//maybeQuote(
+          //"$" + inFields.get(inputRef.getIndex()));
     }
 
     @Override public String visitCall(RexCall call) {
@@ -184,7 +184,7 @@ public class KdbRules {
       if (call.getKind() == SqlKind.CAST) {
         return strings.get(0);
       }
-      String stdOperator = MONGO_OPERATORS.get(call.getOperator());
+      String stdOperator = KDB_OPERATORS.get(call.getOperator());
       if (stdOperator != null) {
         return "{" + stdOperator + ": [" + Util.commaList(strings) + "]}";
       }
@@ -225,6 +225,9 @@ public class KdbRules {
         sb.append(finish);
         return sb.toString();
       }
+      if (call.getOperator() == SqlStdOperatorTable.CURRENT_DATE) {
+        return ".z.d";
+      }
       throw new IllegalArgumentException("Translation of " + call.toString()
           + " is not supported by KdbProject");
     }
@@ -246,11 +249,11 @@ public class KdbRules {
 
   /** Base class for planner rules that convert a relational expression to
    * MongoDB calling convention. */
-  abstract static class MongoConverterRule extends ConverterRule {
+  abstract static class KdbConverterRule extends ConverterRule {
     protected final Convention out;
 
-    MongoConverterRule(Class<? extends RelNode> clazz, RelTrait in,
-        Convention out, String description) {
+    KdbConverterRule(Class<? extends RelNode> clazz, RelTrait in,
+                     Convention out, String description) {
       super(clazz, in, out, description);
       this.out = out;
     }
@@ -260,12 +263,12 @@ public class KdbRules {
    * Rule to convert a {@link org.apache.calcite.rel.core.Sort} to a
    * {@link KdbSort}.
    */
-  private static class MongoSortRule extends MongoConverterRule {
-    public static final MongoSortRule INSTANCE = new MongoSortRule();
+  private static class KdbSortRule extends KdbConverterRule {
+    public static final KdbSortRule INSTANCE = new KdbSortRule();
 
-    private MongoSortRule() {
+    private KdbSortRule() {
       super(Sort.class, Convention.NONE, KdbRel.CONVENTION,
-          "MongoSortRule");
+          "KdbSortRule");
     }
 
     public RelNode convert(RelNode rel) {
@@ -283,12 +286,12 @@ public class KdbRules {
    * Rule to convert a {@link org.apache.calcite.rel.logical.LogicalFilter} to a
    * {@link KdbFilter}.
    */
-  private static class MongoFilterRule extends MongoConverterRule {
-    private static final MongoFilterRule INSTANCE = new MongoFilterRule();
+  private static class KdbFilterRule extends KdbConverterRule {
+    private static final KdbFilterRule INSTANCE = new KdbFilterRule();
 
-    private MongoFilterRule() {
+    private KdbFilterRule() {
       super(LogicalFilter.class, Convention.NONE, KdbRel.CONVENTION,
-          "MongoFilterRule");
+          "KdbFilterRule");
     }
 
     public RelNode convert(RelNode rel) {
@@ -306,12 +309,12 @@ public class KdbRules {
    * Rule to convert a {@link org.apache.calcite.rel.logical.LogicalProject}
    * to a {@link KdbProject}.
    */
-  private static class MongoProjectRule extends MongoConverterRule {
-    private static final MongoProjectRule INSTANCE = new MongoProjectRule();
+  private static class KdbProjectRule extends KdbConverterRule {
+    private static final KdbProjectRule INSTANCE = new KdbProjectRule();
 
-    private MongoProjectRule() {
+    private KdbProjectRule() {
       super(LogicalProject.class, Convention.NONE, KdbRel.CONVENTION,
-          "MongoProjectRule");
+          "KdbProjectRule");
     }
 
     public RelNode convert(RelNode rel) {
@@ -330,7 +333,7 @@ public class KdbRules {
    * {@link MongoCalcRel}.
    o/
   private static class MongoCalcRule
-      extends MongoConverterRule {
+      extends KdbConverterRule {
     private MongoCalcRule(MongoConvention out) {
       super(
           LogicalCalc.class,
@@ -496,12 +499,12 @@ public class KdbRules {
    * Rule to convert an {@link org.apache.calcite.rel.logical.LogicalAggregate}
    * to an {@link KdbAggregate}.
    */
-  private static class MongoAggregateRule extends MongoConverterRule {
-    public static final RelOptRule INSTANCE = new MongoAggregateRule();
+  private static class KdbAggregateRule extends KdbConverterRule {
+    public static final RelOptRule INSTANCE = new KdbAggregateRule();
 
-    private MongoAggregateRule() {
+    private KdbAggregateRule() {
       super(LogicalAggregate.class, Convention.NONE, KdbRel.CONVENTION,
-          "MongoAggregateRule");
+          "KdbAggregateRule");
     }
 
     public RelNode convert(RelNode rel) {
@@ -530,7 +533,7 @@ public class KdbRules {
    * {@link MongoUnionRel}.
    o/
   private static class MongoUnionRule
-      extends MongoConverterRule {
+      extends KdbConverterRule {
     private MongoUnionRule(MongoConvention out) {
       super(
           Union.class,
@@ -595,7 +598,7 @@ public class KdbRules {
    * to an {@link MongoIntersectRel}.
    o/
   private static class MongoIntersectRule
-      extends MongoConverterRule {
+      extends KdbConverterRule {
     private MongoIntersectRule(MongoConvention out) {
       super(
           LogicalIntersect.class,
@@ -646,7 +649,7 @@ public class KdbRules {
    * to an {@link MongoMinusRel}.
    o/
   private static class MongoMinusRule
-      extends MongoConverterRule {
+      extends KdbConverterRule {
     private MongoMinusRule(MongoConvention out) {
       super(
           LogicalMinus.class,
@@ -692,7 +695,7 @@ public class KdbRules {
     }
   }
 
-  public static class MongoValuesRule extends MongoConverterRule {
+  public static class MongoValuesRule extends KdbConverterRule {
     private MongoValuesRule(MongoConvention out) {
       super(
           LogicalValues.class,

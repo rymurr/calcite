@@ -16,6 +16,7 @@
  */
 package org.apache.calcite.adapter.kdb;
 
+import com.google.common.base.Joiner;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
@@ -73,12 +74,10 @@ public class KdbProject extends Project implements KdbRel {
     for (Pair<RexNode, String> pair : getNamedProjects()) {
       final String name = pair.right;
       final String expr = pair.left.accept(translator);
-      items.add(expr.equals("'$" + name + "'")
-          ? KdbRules.maybeQuote(name) + ": 1"
-          : KdbRules.maybeQuote(name) + ": " + expr);
+      items.add(name + ": " + expr);
     }
-    final String findString = Util.toString(items, "{", ", ", "}");
-    final String aggregateString = "{$project: " + findString + "}";
+    final String findString = Joiner.on(", ").join(items);
+    final String aggregateString = "project& " + findString;
     final Pair<String, String> op = Pair.of(findString, aggregateString);
     implementor.add(op.left, op.right);
   }

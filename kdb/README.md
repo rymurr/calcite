@@ -7,3 +7,4 @@
 * sort out queries wrt to 'time' column and other illegaal sql names.
 * make sure 'in' works correctly
 * test ignored tests
+* ensure time/date filters work!

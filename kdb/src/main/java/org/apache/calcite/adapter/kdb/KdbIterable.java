@@ -1,5 +1,8 @@
 package org.apache.calcite.adapter.kdb;
 
+import org.apache.calcite.avatica.util.DateTimeUtils;
+
+import java.sql.Date;
 import java.util.Iterator;
 
 
@@ -53,7 +56,10 @@ public class KdbIterable implements Iterable<Object[]> {
                 } else if (val instanceof int[]) {
                     o[i] = ((int[])val)[index];
                 } else if (val instanceof long[]) {
-                    o[i] = ((long[])val)[index];
+                    o[i] = ((long[]) val)[index];
+                } else if (val instanceof Date[]) {
+                    Date d = ((Date[])val)[index];
+                    o[i] = DateTimeUtils.dateStringToUnixDate(d.toString());
                 } else {
                     o[i] = ((Object[]) resultSet.y[i])[index];
                 }

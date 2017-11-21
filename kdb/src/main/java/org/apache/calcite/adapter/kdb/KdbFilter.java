@@ -38,6 +38,7 @@ import org.apache.calcite.util.Pair;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 
+import java.sql.SQLType;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -167,6 +168,8 @@ public class KdbFilter extends Filter implements KdbRel {
     private static Object literalValue(RexLiteral literal) {
       if (literal.getTypeName() == SqlTypeName.CHAR) {
         return "`" + ((String)literal.getValue2()).replaceAll("'", "");
+      } else if (literal.getTypeName() == SqlTypeName.DECIMAL) {
+        return literal.getValue();
       }
       return literal.getValue2();
     }
