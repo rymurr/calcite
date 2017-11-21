@@ -105,14 +105,14 @@ public class KdbTable extends AbstractQueryableTable
    * @return Enumerator of results
    */
   private Enumerable<Object> find(final KdbConnection kdb, String filterJson,
-      String projectJson, List<Map.Entry<String, Class>> fields) {
+                                  String projectJson, final List<Map.Entry<String, Class>> fields) {
 
     final String query = QueryGenerator.generate(collectionName, filterJson, projectJson, fields);
     return new AbstractEnumerable<Object>() {
       public Enumerator<Object> enumerator() {
 
-        final Iterable<Object[]> cursor = kdb.select(query);
-        return new KdbEnumerator(cursor.iterator());
+        final Iterable<Object[]> cursor = kdb.select(query, fields);
+        return new KdbEnumerator(cursor.iterator(), fields);
       }
     };
   }
@@ -140,14 +140,14 @@ public class KdbTable extends AbstractQueryableTable
         try {
 
           String query = QueryGenerator.groupby(collectionName, fields, operations);
-          final Iterable<Object[]> cursor = kdb.select(query);
+          final Iterable<Object[]> cursor = kdb.select(query, fields);
           resultIterator = cursor.iterator();
 
         } catch (Exception e) {
           throw new RuntimeException("While running MongoDB query "
               + Util.toString(operations, "[", ",\n", "]"), e);
         }
-        return new KdbEnumerator(resultIterator);
+        return new KdbEnumerator(resultIterator, fields);
       }
     };
   }

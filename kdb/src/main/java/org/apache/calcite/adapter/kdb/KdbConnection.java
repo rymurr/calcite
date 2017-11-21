@@ -4,6 +4,7 @@ import com.google.common.collect.Maps;
 import org.apache.calcite.util.Pair;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 public class KdbConnection {
@@ -75,10 +76,10 @@ public class KdbConnection {
         return Pair.of(names, types);
     }
 
-    public Iterable<Object[]> select(String source) {
+    public Iterable<Object[]> select(String source, List<Map.Entry<String, Class>> fields) {
         try {
-            c.Flip results = (c.Flip) getConn().k(source);
-            Iterable<Object[]> iter = new KdbIterable(results);
+            Object results = getConn().k(source);
+            Iterable<Object[]> iter = new KdbIterable(results, fields);
             return iter;
         } catch (c.KException e) {
             e.printStackTrace();

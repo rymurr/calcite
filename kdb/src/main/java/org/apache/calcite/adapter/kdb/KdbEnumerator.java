@@ -20,16 +20,20 @@ package org.apache.calcite.adapter.kdb;
 import org.apache.calcite.linq4j.Enumerator;
 
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Enumerator that reads from a MongoDB collection.
  */
 class KdbEnumerator implements Enumerator<Object> {
     private final Iterator<Object[]> cursor;
+    private List<Map.Entry<String, Class>> fields;
     private Object current;
 
-    KdbEnumerator(Iterator<Object[]> cursor) {
+    KdbEnumerator(Iterator<Object[]> cursor, List<Map.Entry<String, Class>> fields) {
         this.cursor = cursor;
+        this.fields = fields;
     }
 
     public Object current() {

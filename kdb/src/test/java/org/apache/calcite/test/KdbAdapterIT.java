@@ -483,8 +483,8 @@ public class KdbAdapterIT {
         .query(
             "select count(*) as c, sym from trade group by sym order by sym")
         .limit(2)
-        .returns("C=195; STATE=AK\n"
-            + "C=567; STATE=AL\n")
+        .returns("c=2; sym=a\n"
+            + "c=1; sym=b\n")
         .queryContains(
             kdbChecker(
                 "{$project: {STATE: '$state'}}",
@@ -803,8 +803,8 @@ public class KdbAdapterIT {
         .enable(enabled())
             .with(Lex.JAVA)
             .with(ZIPS)
-        .query("select cast(current_date as DATE), price from trade where price > 11.0 ")
-        .returnsUnordered("EXPR$0=" + current_date + "; price=12.75");
+        .query("select current_date, price from trade where price > 11.0 ")
+        .returnsUnordered("current_date=" + current_date + "; price=12.75");
   }
 
   /** Test case for

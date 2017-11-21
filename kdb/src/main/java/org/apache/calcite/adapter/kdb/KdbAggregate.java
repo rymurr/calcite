@@ -16,6 +16,8 @@
  */
 package org.apache.calcite.adapter.kdb;
 
+import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.InvalidRelException;
@@ -89,27 +91,24 @@ public class KdbAggregate
         KdbRules.mongoFieldNames(getInput().getRowType());
     final List<String> outNames = KdbRules.mongoFieldNames(getRowType());
     int i = 0;
+    List<String> keys = Lists.newArrayList();
     if (groupSet.cardinality() == 1) {
       final String inName = inNames.get(groupSet.nth(0));
-      list.add("_id: " + KdbRules.maybeQuote("$" + inName));
+      keys.add(inName);
       ++i;
     } else {
-      List<String> keys = new ArrayList<String>();
       for (int group : groupSet) {
         final String inName = inNames.get(group);
-        keys.add(inName + ": " + KdbRules.quote("$" + inName));
+        keys.add(inName);
         ++i;
       }
-      list.add("_id: " + Util.toString(keys, "{", ", ", "}"));
     }
     for (AggregateCall aggCall : aggCalls) {
-      list.add(
-          KdbRules.maybeQuote(outNames.get(i++)) + ": "
-          + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList()));
+      list.add(outNames.get(i++) + ": " + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList(), keys.get(0)));
     }
     implementor.add(null,
-        "{$group: " + Util.toString(list, "{", ", ", "}") + "}");
-    final List<String> fixups;
+        "group$ " + Joiner.on(",").join(list) + " by " + Joiner.on(",").join(keys));
+    /*final List<String> fixups;
     if (groupSet.cardinality() == 1) {
       fixups = new AbstractList<String>() {
         @Override public String get(int index) {
@@ -143,20 +142,18 @@ public class KdbAggregate
     if (!groupSet.isEmpty()) {
       implementor.add(null,
           "{$project: " + Util.toString(fixups, "{", ", ", "}") + "}");
-    }
+    }*/
   }
 
   private String toMongo(SqlAggFunction aggregation, List<String> inNames,
-      List<Integer> args) {
+      List<Integer> args, String aggField) {
     if (aggregation == SqlStdOperatorTable.COUNT) {
       if (args.size() == 0) {
-        return "{$sum: 1}";
+        return "count " + aggField;
       } else {
         assert args.size() == 1;
         final String inName = inNames.get(args.get(0));
-        return "{$sum: {$cond: [ {$eq: ["
-            + KdbRules.quote(inName)
-            + ", null]}, 0, 1]}}";
+        return "count " + inName;
       }
     } else if (aggregation instanceof SqlSumAggFunction
         || aggregation instanceof SqlSumEmptyIsZeroAggFunction) {

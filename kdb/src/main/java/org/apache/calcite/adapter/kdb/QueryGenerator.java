@@ -5,12 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.apache.calcite.model.JsonMapSchema;
 import org.apache.calcite.util.JsonBuilder;
+import org.apache.calcite.util.Pair;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class QueryGenerator {
     public static String generate(String collectionName, String filterJson, String projectJson, List<Map.Entry<String, Class>> fields) {
@@ -26,6 +29,11 @@ public class QueryGenerator {
                 ops.put(kv[0], kv[1]);
                 continue;
             }
+            if (o.contains("group$")) {
+                String[] kv = o.split("\\$", 2);
+                ops.put(kv[0], kv[1]);
+                continue;
+            }
             if (o.contains(": ")) {
                 String[] kv = o.split(":");
                 ops.put(kv[0], kv[1]);
@@ -34,26 +42,49 @@ public class QueryGenerator {
         }
         StringBuffer buffer = new StringBuffer();
         buffer.append("select ");
-        buffer = addProject(buffer, ops, fields);
+        Pair<String, List<String>> pair = addGroup(ops, fields);
+        buffer = addProject(buffer, ops, pair.right, pair.left);
         buffer.append(" from ");
         buffer.append(collectionName);
         buffer = addMatch(buffer, ops);
         buffer = addSort(buffer, ops);
-        return buffer.toString();
+        String query = buffer.toString();
+        /*if (pair.left != null) {
+            query = "0!" + query;
+        }*/
+        return query;
     }
 
-    private static StringBuffer addProject(StringBuffer buffer, Map<String, String> ops, List<Map.Entry<String, Class>> fields) {
-        Map<String, String> fieldMap = (ops.containsKey("project")) ? toJson(ops.get("project")) : Maps.<String, String>newHashMap();
-        List<String> x = Lists.newArrayList();
-        for (Map.Entry<String, Class> kv: fields) {
-            if (fieldMap.containsKey(kv.getKey())) {
-                x.add(fieldMap.get(kv.getKey()));
-            } else {
-                x.add(kv.getKey());
+    private static Pair<String, List<String>> addGroup(Map<String, String> ops, List<Map.Entry<String, Class>> fields) {
+        List<String> badFields = Lists.newArrayList();
+        if (ops.containsKey("group")) {
+            String grp = ops.get("group");
+            Set<String> arrFields = Sets.newHashSet(grp.replaceAll(":","").split(" "));
+            for (Map.Entry<String, Class> field : fields) {
+                if (arrFields.contains(field.getKey())) {
+                    badFields.add(field.getKey());
+                }
             }
+            return new Pair<>(grp, badFields);
         }
-        String fs = Joiner.on(',').join(x);
-        buffer.append(fs);
+        return new Pair<>(null, badFields);
+    }
+
+    private static StringBuffer addProject(StringBuffer buffer, Map<String, String> ops, List<String> groupFields, String groupbyStatement) {
+        if (ops.containsKey("project")) {
+            String[] keys = ops.get("project").split(",");
+            List<String> fields = Lists.newArrayList();
+            Set<String> fieldSet = Sets.newHashSet(groupFields);
+            for (String key: keys) {
+                if (!fieldSet.contains(key.replaceAll(" ",""))) {
+                    fields.add(key);
+                }
+            }
+            fields.add(groupbyStatement);
+            buffer.append(" ");
+            buffer.append(Joiner.on(",").join(fields));
+            buffer.append(" ");
+        }
         return buffer;
     }
 

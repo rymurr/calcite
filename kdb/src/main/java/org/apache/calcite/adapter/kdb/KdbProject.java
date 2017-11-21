@@ -74,7 +74,7 @@ public class KdbProject extends Project implements KdbRel {
     for (Pair<RexNode, String> pair : getNamedProjects()) {
       final String name = pair.right;
       final String expr = pair.left.accept(translator);
-      items.add(name + ": " + expr);
+      items.add((name.equals(expr)) ? expr: (name + ": " + expr));
     }
     final String findString = Joiner.on(", ").join(items);
     final String aggregateString = "project& " + findString;
