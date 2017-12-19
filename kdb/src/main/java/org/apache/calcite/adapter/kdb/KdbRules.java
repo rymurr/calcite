@@ -92,7 +92,7 @@ public class KdbRules {
         new AbstractList<String>() {
           @Override public String get(int index) {
             final String name = rowType.getFieldList().get(index).getName();
-            return name.startsWith("$") ? "_" + name.substring(2) : name;
+            return name.replaceAll("\\$","_");
           }
 
           @Override public int size() {
@@ -164,10 +164,8 @@ public class KdbRules {
       if (literal.getValue() == null) {
         return "null";
       }
-      return "{$literal: "
-          + RexToLixTranslator.translateLiteral(literal, literal.getType(),
-              typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
-          + "}";
+      return RexToLixTranslator.translateLiteral(literal, literal.getType(),
+              typeFactory, RexImpTable.NullAs.NOT_POSSIBLE).toString();
     }
 
     @Override public String visitInputRef(RexInputRef inputRef) {

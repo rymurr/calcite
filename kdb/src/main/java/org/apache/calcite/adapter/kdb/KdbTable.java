@@ -53,6 +53,7 @@ public class KdbTable extends AbstractQueryableTable
           .put('s', SqlTypeName.CHAR)
           .put('i', SqlTypeName.INTEGER)
           .put('f', SqlTypeName.FLOAT)
+          .put('j', SqlTypeName.BIGINT)
           .build();
   /** Creates a KdbTable. */
   KdbTable(String collectionName, KdbConnection conn, RelProtoDataType protoRowType) {

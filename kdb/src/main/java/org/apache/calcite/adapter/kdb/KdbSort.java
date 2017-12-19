@@ -95,7 +95,7 @@ public class KdbSort extends Sort implements KdbRel {
 
   private String sort(Multimap<String, String> fields) {
     StringBuffer buffer = new StringBuffer();
-    for (String d: fields.keys()) {
+    for (String d: fields.keySet()) {
       String f = '`' + Joiner.on('`').join(fields.get(d));
       buffer.append(f);
       buffer.append(" ");

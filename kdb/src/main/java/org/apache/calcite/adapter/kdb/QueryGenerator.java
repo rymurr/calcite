@@ -80,7 +80,17 @@ public class QueryGenerator {
                     fields.add(key);
                 }
             }
-            fields.add(groupbyStatement);
+            if (groupbyStatement != null) {
+                fields.add(groupbyStatement);
+            }
+            buffer.append(" ");
+            buffer.append(Joiner.on(",").join(fields));
+            buffer.append(" ");
+        } else {
+            List<String> fields = Lists.newArrayList();
+            if (groupbyStatement != null) {
+                fields.add(groupbyStatement);
+            }
             buffer.append(" ");
             buffer.append(Joiner.on(",").join(fields));
             buffer.append(" ");

@@ -1,5 +1,6 @@
 package org.apache.calcite.adapter.kdb;
 
+import com.google.common.collect.Maps;
 import org.apache.calcite.avatica.util.DateTimeUtils;
 
 import java.sql.Date;
@@ -25,12 +26,16 @@ public class KdbIterable implements Iterable<Object[]> {
     public static class KdbIterator implements Iterator<Object[]> {
         private Object[] current;
         private final Object resultSet;
-        private List<Map.Entry<String, Class>> fields;
+        private Map<String, Integer> fields;
         private int index = 0;
 
         public KdbIterator(Object resultSet, List<Map.Entry<String, Class>> fields) {
             this.resultSet = resultSet;
-            this.fields = fields;
+            this.fields = Maps.newHashMap();
+            int i = 0;
+            for (Map.Entry<String, Class> f: fields) {
+                this.fields.put(f.getKey(), i++);
+            }
         }
 
         @Override
@@ -70,18 +75,40 @@ public class KdbIterable implements Iterable<Object[]> {
                     o[i] = ((Object[]) resultSet.y[i])[index];
                 }
             }
-            index++;
             return o;
         }
 
         private Object[] getCurrent() throws ArrayIndexOutOfBoundsException {
             if (resultSet instanceof c.Flip) {
-                return getFlip((c.Flip) resultSet);
+                Object[] f = getFlip((c.Flip) resultSet);
+                index++;
+                return f;
             }
             if (resultSet instanceof c.Dict) {
-                return null; //todo
+                Object[] f = getDict((c.Dict) resultSet);
+                index++;
+                return f;
             }
             throw new UnsupportedOperationException("cant deal with " + resultSet.getClass().toString());
+        }
+
+        private Object[] getDict(c.Dict resultSet) {
+            c.Flip keys = (c.Flip) resultSet.x;
+            c.Flip values = (c.Flip) resultSet.y;
+            Object[] k = getFlip(keys);
+            Object[] v = getFlip(values);
+            Object[] retval = new Object[fields.size()];
+            int j=0;
+            for (String x: keys.x) {
+                int i = fields.get(x);
+                retval[i] = k[j++];
+            }
+            j=0;
+            for (String x: values.x) {
+                int i = fields.get(x);
+                retval[i] = v[j++];
+            }
+            return retval;
         }
     }
 }

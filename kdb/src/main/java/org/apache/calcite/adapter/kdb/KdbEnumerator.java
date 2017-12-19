@@ -37,6 +37,12 @@ class KdbEnumerator implements Enumerator<Object> {
     }
 
     public Object current() {
+        if (current != null && current instanceof Object[]) {
+            Object[] c = (Object[]) current;
+            if (c.length == 1) {
+                return c[0];
+            }
+        }
         return current;
     }
 

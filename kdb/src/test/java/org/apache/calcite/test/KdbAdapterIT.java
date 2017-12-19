@@ -328,29 +328,21 @@ public class KdbAdapterIT {
   @Test public void testSelectWhere() {
     CalciteAssert.that()
         .enable(enabled())
-        .withModel(KDB_FOODMART_MODEL)
+            .with(Lex.JAVA)
+        .with(ZIPS)
         .query(
-            "select * from \"warehouse\" where \"warehouse_state_province\" = 'CA'")
-        .explainContains("PLAN=KdbToEnumerableConverter\n"
-            + "  KdbProject(warehouse_id=[CAST(ITEM($0, 'warehouse_id')):DOUBLE], warehouse_state_province=[CAST(ITEM($0, 'warehouse_state_province')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"])\n"
-            + "    KdbFilter(condition=[=(CAST(ITEM($0, 'warehouse_state_province')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\", 'CA')])\n"
-            + "      KdbTableScan(table=[[_foodmart, warehouse]])")
+            "select * from p where p = 'p1'")
+        .explainContains("PLAN=KdbToEnumerableConverter\n" +
+                        "  KdbFilter(condition=[=(CAST($0):CHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\" NOT NULL, 'p1')])\n" +
+                        "    KdbTableScan(table=[[q, p]])")
         .returns(
             checkResultUnordered(
-                "warehouse_id=6; warehouse_state_province=CA",
-                "warehouse_id=7; warehouse_state_province=CA",
-                "warehouse_id=14; warehouse_state_province=CA",
-                "warehouse_id=24; warehouse_state_province=CA"))
+                "p=p1; name=nut; color=red; weight=12; city=london"))
         .queryContains(
             // Per https://issues.apache.org/jira/browse/CALCITE-164,
             // $match must occur before $project for good performance.
             kdbChecker(
-                "{\n"
-                    + "  \"$match\": {\n"
-                    + "    \"warehouse_state_province\": \"CA\"\n"
-                    + "  }\n"
-                    + "}",
-                "{$project: {warehouse_id: 1, warehouse_state_province: 1}}"));
+                "filter: p = `p1"));
   }
 
   @Test public void testInPlan() {
@@ -417,15 +409,17 @@ public class KdbAdapterIT {
   @Test public void testCountGroupByEmpty() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select count(*) from zips")
-        .returns("EXPR$0=29353\n")
+        .query("select count(*) from trade")
+        .returns("EXPR$0=3\n")
         .explainContains("PLAN=KdbToEnumerableConverter\n"
             + "  KdbAggregate(group=[{}], EXPR$0=[COUNT()])\n"
-            + "    KdbTableScan(table=[[kdb_raw, zips]])")
+            + "    KdbProject(DUMMY=[0])\n"
+            + "      KdbTableScan(table=[[q, trade]])")
         .queryContains(
             kdbChecker(
-                "{$group: {_id: {}, 'EXPR$0': {$sum: 1}}}"));
+                "group$ EXPR_0: count time"));
   }
 
   @Test public void testCountGroupByEmptyMultiplyBy2() {
@@ -487,11 +481,9 @@ public class KdbAdapterIT {
             + "c=1; sym=b\n")
         .queryContains(
             kdbChecker(
-                "{$project: {STATE: '$state'}}",
-                "{$group: {_id: '$STATE', C: {$sum: 1}}}",
-                "{$project: {STATE: '$_id', C: '$C'}}",
-                "{$project: {C: 1, STATE: 1}}",
-                "{$sort: {STATE: 1}}"));
+                "group$ c: count sym by sym",
+                "project& c, sym",
+                "sort: `sym xasc "));
   }
 
   @Test public void testGroupByAvg() {
@@ -649,25 +641,19 @@ public class KdbAdapterIT {
   @Test public void testDistinctCountOrderBy() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select state, count(distinct city) as cdc\n"
-            + "from zips\n"
-            + "group by state\n"
-            + "order by cdc desc limit 5")
-        .returns("STATE=NY; CDC=1370\n"
-            + "STATE=PA; CDC=1369\n"
-            + "STATE=TX; CDC=1233\n"
-            + "STATE=IL; CDC=1148\n"
-            + "STATE=CA; CDC=1072\n")
+        .query("select s, count(distinct p) as cdc\n"
+            + "from sp\n"
+            + "group by s\n"
+            + "order by cdc desc limit 2")
+        .returns("s=s1; cdc=6\n" +
+                "s=s4; cdc=3\n")
         .queryContains(
             kdbChecker(
-                "{$project: {CITY: '$city', STATE: '$state'}}",
-                "{$group: {_id: {CITY: '$CITY', STATE: '$STATE'}}}",
-                "{$project: {_id: 0, CITY: '$_id.CITY', STATE: '$_id.STATE'}}",
-                "{$group: {_id: '$STATE', CDC: {$sum: {$cond: [ {$eq: ['CITY', null]}, 0, 1]}}}}",
-                "{$project: {STATE: '$_id', CDC: '$CDC'}}",
-                "{$sort: {CDC: -1}}",
-                "{$limit: 5}"));
+                "group$ cdc: count distinct p by s",
+                        "sort: `cdc xdesc ",
+                        "{$limit: 2}"));
   }
 
   @Test public void testProject() {
@@ -677,13 +663,12 @@ public class KdbAdapterIT {
         .with(ZIPS)
         .query("select sym, price, 0 as zero from trade order by sym, price")
         .limit(2)
-        .returns("STATE=AK; CITY=AKHIOK; ZERO=0\n"
-            + "STATE=AK; CITY=AKIACHAK; ZERO=0\n")
+        .returns("sym=a; price=10.75; zero=0\n" +
+                "sym=a; price=10.85; zero=0\n")
         .queryContains(
             kdbChecker(
-                "{$project: {CITY: '$city', STATE: '$state'}}",
-                "{$sort: {STATE: 1, CITY: 1}}",
-                "{$project: {STATE: 1, CITY: 1, ZERO: {$literal: 0}}}"));
+                "sort: `sym`price xasc ",
+                        "project& sym, price, zero: 0"));
   }
 
   @Test public void testFilter() {

@@ -8,3 +8,4 @@
 * make sure 'in' works correctly
 * test ignored tests
 * ensure time/date filters work!
+* did I cover difference between string and char array?

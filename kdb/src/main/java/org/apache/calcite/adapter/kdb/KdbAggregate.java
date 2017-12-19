@@ -56,12 +56,12 @@ public class KdbAggregate
     assert getConvention() == KdbRel.CONVENTION;
     assert getConvention() == child.getConvention();
 
-    for (AggregateCall aggCall : aggCalls) {
+    /*for (AggregateCall aggCall : aggCalls) {
       if (aggCall.isDistinct()) {
         throw new InvalidRelException(
             "distinct aggregation not supported");
       }
-    }
+    }*/
     switch (getGroupType()) {
     case SIMPLE:
       break;
@@ -104,10 +104,17 @@ public class KdbAggregate
       }
     }
     for (AggregateCall aggCall : aggCalls) {
-      list.add(outNames.get(i++) + ": " + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList(), keys.get(0)));
+      String k;
+      if (keys.size() == 0) {
+        k = implementor.table.getRowType().getFieldList().get(0).getName();
+      } else {
+        k = keys.get(0);
+      }
+      list.add(outNames.get(i++) + ": " + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList(), k, aggCall.isDistinct()));
     }
+    String by = keys.isEmpty() ? "": (" by " + Joiner.on(",").join(keys));
     implementor.add(null,
-        "group$ " + Joiner.on(",").join(list) + " by " + Joiner.on(",").join(keys));
+        "group$ " + Joiner.on(",").join(list) + by);
     /*final List<String> fixups;
     if (groupSet.cardinality() == 1) {
       fixups = new AbstractList<String>() {
@@ -146,14 +153,15 @@ public class KdbAggregate
   }
 
   private String toMongo(SqlAggFunction aggregation, List<String> inNames,
-      List<Integer> args, String aggField) {
+                         List<Integer> args, String aggField, boolean distinct) {
     if (aggregation == SqlStdOperatorTable.COUNT) {
+      String agg = distinct ? "count distinct " : "count ";
       if (args.size() == 0) {
-        return "count " + aggField;
+        return agg + aggField;
       } else {
         assert args.size() == 1;
         final String inName = inNames.get(args.get(0));
-        return "count " + inName;
+        return agg + inName;
       }
     } else if (aggregation instanceof SqlSumAggFunction
         || aggregation instanceof SqlSumEmptyIsZeroAggFunction) {

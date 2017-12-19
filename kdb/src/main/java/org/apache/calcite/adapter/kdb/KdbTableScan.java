@@ -25,6 +25,7 @@ import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
+import org.apache.calcite.rel.rules.AggregateExpandDistinctAggregatesRule;
 import org.apache.calcite.rel.type.RelDataType;
 
 import java.util.List;
@@ -80,6 +81,7 @@ public class KdbTableScan extends TableScan implements KdbRel {
     for (RelOptRule rule : KdbRules.RULES) {
       planner.addRule(rule);
     }
+    planner.removeRule(AggregateExpandDistinctAggregatesRule.INSTANCE);
   }
 
   public void implement(Implementor implementor) {

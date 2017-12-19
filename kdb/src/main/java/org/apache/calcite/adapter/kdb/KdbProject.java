@@ -76,6 +76,9 @@ public class KdbProject extends Project implements KdbRel {
       final String expr = pair.left.accept(translator);
       items.add((name.equals(expr)) ? expr: (name + ": " + expr));
     }
+    if (items.isEmpty()) {
+      return;
+    }
     final String findString = Joiner.on(", ").join(items);
     final String aggregateString = "project& " + findString;
     final Pair<String, String> op = Pair.of(findString, aggregateString);
