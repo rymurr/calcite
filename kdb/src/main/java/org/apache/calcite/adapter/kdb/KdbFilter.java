@@ -104,7 +104,14 @@ public class KdbFilter extends Filter implements KdbRel {
       case 1:
         return list.get(0);
       default:
-        throw new UnsupportedOperationException("Haven't implemented or for kdb");
+        List<String> ll = Lists.newArrayList();
+        String prefix = "";
+          for (String s: list) {
+            String r = s.split("=")[1].replaceAll(" ","");
+            prefix = s.split("=")[0].replaceAll(" ","");
+            ll.add(r);
+          }
+          return prefix + " in " + Joiner.on("").join(ll);
       }
     }
 
@@ -181,13 +188,13 @@ public class KdbFilter extends Filter implements KdbRel {
       case LESS_THAN:
         return translateBinary("<", ">", (RexCall) node);
       case LESS_THAN_OR_EQUAL:
-        return translateBinary("$lte", "$gte", (RexCall) node);
+        return translateBinary("<=", ">=", (RexCall) node);
       case NOT_EQUALS:
-        return translateBinary("$ne", "$ne", (RexCall) node);
+        return translateBinary("<>", "<>", (RexCall) node);
       case GREATER_THAN:
         return translateBinary(">", "<", (RexCall) node);
       case GREATER_THAN_OR_EQUAL:
-        return translateBinary("$gte", "$lte", (RexCall) node);
+        return translateBinary(">=", "<=", (RexCall) node);
       default:
         throw new AssertionError("cannot translate " + node);
       }

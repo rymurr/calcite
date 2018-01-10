@@ -89,7 +89,7 @@ public class KdbSort extends Sort implements KdbRel {
     }
     if (fetch != null) {
       implementor.add(null,
-          "{$limit: " + ((RexLiteral) fetch).getValue() + "}");
+          "limit: i < " + ((RexLiteral) fetch).getValue());
     }
   }
 

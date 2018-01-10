@@ -167,19 +167,19 @@ public class KdbAggregate
         || aggregation instanceof SqlSumEmptyIsZeroAggFunction) {
       assert args.size() == 1;
       final String inName = inNames.get(args.get(0));
-      return "{$sum: " + KdbRules.maybeQuote("$" + inName) + "}";
+      return "sum " + inName ;
     } else if (aggregation == SqlStdOperatorTable.MIN) {
       assert args.size() == 1;
       final String inName = inNames.get(args.get(0));
-      return "{$min: " + KdbRules.maybeQuote("$" + inName) + "}";
+      return "min " + inName;
     } else if (aggregation == SqlStdOperatorTable.MAX) {
       assert args.size() == 1;
       final String inName = inNames.get(args.get(0));
-      return "{$max: " + KdbRules.maybeQuote("$" + inName) + "}";
+      return "max " + inName;
     } else if (aggregation == SqlStdOperatorTable.AVG) {
       assert args.size() == 1;
       final String inName = inNames.get(args.get(0));
-      return "{$avg: " + KdbRules.maybeQuote("$" + inName) + "}";
+      return "avg " + inName;
     } else {
       throw new AssertionError("unknown aggregate " + aggregation);
     }

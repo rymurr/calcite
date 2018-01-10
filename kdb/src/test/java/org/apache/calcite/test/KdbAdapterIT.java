@@ -215,14 +215,15 @@ public class KdbAdapterIT {
   @Test public void testLimit() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select state, id from zips\n"
+        .query("select s, p from sp\n"
             + "fetch next 3 rows only")
         .runs()
         .queryContains(
             kdbChecker(
-                "{$limit: 3}",
-                "{$project: {STATE: '$state', ID: '$_id'}}"));
+                "limit: i < 3",
+                "project& s, p"));
   }
 
   @Ignore
@@ -263,16 +264,17 @@ public class KdbAdapterIT {
   @Test public void testFilterSortDesc() {
     CalciteAssert.that()
         .enable(enabled())//todo
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select * from zips\n"
-            + "where pop BETWEEN 20000 AND 20100\n"
-            + "order by state desc, pop")
+        .query("select * from sp\n"
+            + "where qty BETWEEN 100 AND 300\n"
+            + "order by s desc, qty")
         .limit(4)
         .returns(""
-            + "CITY=SHERIDAN; LONGITUDE=null; LATITUDE=null; POP=20025; STATE=WY; ID=82801\n"
-            + "CITY=MOUNTLAKE TERRAC; LONGITUDE=null; LATITUDE=null; POP=20059; STATE=WA; ID=98043\n"
-            + "CITY=FALMOUTH; LONGITUDE=null; LATITUDE=null; POP=20039; STATE=VA; ID=22405\n"
-            + "CITY=FORT WORTH; LONGITUDE=null; LATITUDE=null; POP=20012; STATE=TX; ID=76104\n");
+            + "s=s4; p=p5; qty=100\n" +
+                "s=s1; p=p6; qty=100\n" +
+                "s=s4; p=p2; qty=200\n" +
+                "s=s3; p=p2; qty=200\n");
   }
 
   @Test public void testUnionPlan() {
@@ -506,9 +508,10 @@ public class KdbAdapterIT {
   @Test public void testGroupByAvgSumCount() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
         .query(
-            "select state, avg(pop) as a, sum(pop) as s, count(pop) as c from zips group by state order by state")
+            "select p, avg(qty) as a, sum(qty) as b, count(qty) as c from sp group by p order by p")
         .limit(2)
         .returns("STATE=AK; A=2793; S=544698; C=195\n"
             + "STATE=AL; A=7126; S=4040587; C=567\n")
@@ -611,31 +614,16 @@ public class KdbAdapterIT {
   @Test public void testDistinctCount() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select state, count(distinct city) as cdc from zips\n"
-            + "where state in ('CA', 'TX') group by state order by state")
-        .returns("STATE=CA; CDC=1072\n"
-            + "STATE=TX; CDC=1233\n")
+        .query("select sym, count(distinct `time`) as cdc from trade\n"
+            + "where sym in ('a','b') group by sym order by sym")
+        .returns("sym=a; cdc=2\n" +
+                "sym=b; cdc=1\n")
         .queryContains(
-            kdbChecker(
-                "{\n"
-                    + "  \"$match\": {\n"
-                    + "    \"$or\": [\n"
-                    + "      {\n"
-                    + "        \"state\": \"CA\"\n"
-                    + "      },\n"
-                    + "      {\n"
-                    + "        \"state\": \"TX\"\n"
-                    + "      }\n"
-                    + "    ]\n"
-                    + "  }\n"
-                    + "}",
-                "{$project: {CITY: '$city', STATE: '$state'}}",
-                "{$group: {_id: {CITY: '$CITY', STATE: '$STATE'}}}",
-                "{$project: {_id: 0, CITY: '$_id.CITY', STATE: '$_id.STATE'}}",
-                "{$group: {_id: '$STATE', CDC: {$sum: {$cond: [ {$eq: ['CITY', null]}, 0, 1]}}}}",
-                "{$project: {STATE: '$_id', CDC: '$CDC'}}",
-                "{$sort: {STATE: 1}}"));
+            kdbChecker("filter: sym in `a`b",
+    "group$ cdc: count distinct time by sym",
+    "sort: `sym xasc "));
   }
 
   @Test public void testDistinctCountOrderBy() {
@@ -653,7 +641,7 @@ public class KdbAdapterIT {
             kdbChecker(
                 "group$ cdc: count distinct p by s",
                         "sort: `cdc xdesc ",
-                        "{$limit: 2}"));
+                        "limit: i < 2"));
   }
 
   @Test public void testProject() {

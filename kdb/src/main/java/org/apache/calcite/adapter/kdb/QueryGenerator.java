@@ -48,11 +48,24 @@ public class QueryGenerator {
         buffer.append(collectionName);
         buffer = addMatch(buffer, ops);
         buffer = addSort(buffer, ops);
+        buffer = addLimit(buffer, ops);
         String query = buffer.toString();
         /*if (pair.left != null) {
             query = "0!" + query;
         }*/
         return query;
+    }
+
+    private static StringBuffer addLimit(StringBuffer buffer, Map<String, String> ops) {
+        if (ops.containsKey("limit")) {
+            StringBuffer newBuffer = new StringBuffer();
+            newBuffer.append("select from (");
+            newBuffer.append(buffer);
+            newBuffer.append(" ) where ");
+            newBuffer.append(ops.get("limit"));
+            return newBuffer;
+        }
+        return buffer;
     }
 
     private static Pair<String, List<String>> addGroup(Map<String, String> ops, List<Map.Entry<String, Class>> fields) {

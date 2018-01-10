@@ -73,6 +73,9 @@ public class KdbProject extends Project implements KdbRel {
     final List<String> items = new ArrayList<String>();
     for (Pair<RexNode, String> pair : getNamedProjects()) {
       final String name = pair.right;
+      if (name.equals("DUMMY")) {
+        continue;
+      }
       final String expr = pair.left.accept(translator);
       items.add((name.equals(expr)) ? expr: (name + ": " + expr));
     }
