@@ -57,12 +57,22 @@ public class QueryGenerator {
     }
 
     private static StringBuffer addLimit(StringBuffer buffer, Map<String, String> ops) {
-        if (ops.containsKey("limit")) {
+        if (ops.containsKey("limit") || ops.containsKey("skip")) {
+            String limit = (ops.containsKey("limit")) ? ops.get("limit") : null;
+            String skip = (ops.containsKey("skip")) ? ops.get("skip") : null;
+            String query = "";
+            if (limit != null && skip != null) {
+                query += limit + ", " + skip;
+            } else if (limit != null) {
+                query += limit;
+            } else {
+                query += skip;
+            }
             StringBuffer newBuffer = new StringBuffer();
             newBuffer.append("select from (");
             newBuffer.append(buffer);
             newBuffer.append(" ) where ");
-            newBuffer.append(ops.get("limit"));
+            newBuffer.append(query);
             return newBuffer;
         }
         return buffer;

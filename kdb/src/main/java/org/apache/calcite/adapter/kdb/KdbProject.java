@@ -77,7 +77,7 @@ public class KdbProject extends Project implements KdbRel {
         continue;
       }
       final String expr = pair.left.accept(translator);
-      items.add((name.equals(expr)) ? expr: (name + ": " + expr));
+      items.add((name.equals(expr)) ? expr: (name.replace("$","_") + ": " + expr));
     }
     if (items.isEmpty()) {
       return;

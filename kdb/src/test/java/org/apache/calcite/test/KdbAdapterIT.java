@@ -184,32 +184,34 @@ public class KdbAdapterIT {
   @Test public void testSortLimit() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select state, id from zips\n"
-            + "order by state, id offset 2 rows fetch next 3 rows only")
-        .returns("STATE=AK; ID=99503\n"
-            + "STATE=AK; ID=99504\n"
-            + "STATE=AK; ID=99505\n")
+        .query("select p, s from sp\n"
+            + "order by s, p offset 2 rows fetch next 3 rows only")
+        .returns("p=p2; s=s2\n" +
+                "p=p2; s=s3\n" +
+                "p=p2; s=s4\n")
         .queryContains(
             kdbChecker(
-                "{$project: {STATE: '$state', ID: '$_id'}}",
-                "{$sort: {STATE: 1, ID: 1}}",
-                "{$skip: 2}",
-                "{$limit: 3}"));
+                "sort: `p`s xasc ",
+                        "skip: i > 2",
+                        "limit: i <= 5",
+                        "project& p, s"));
   }
 
   @Test public void testOffsetLimit() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select state, id from zips\n"
+        .query("select p, s from sp\n"
             + "offset 2 fetch next 3 rows only")
         .runs()
         .queryContains(
             kdbChecker(
-                "{$skip: 2}",
-                "{$limit: 3}",
-                "{$project: {STATE: '$state', ID: '$_id'}}"));
+                "skip: i > 2",
+                        "limit: i <= 5",
+                        "project& p, s"));
   }
 
   @Test public void testLimit() {
@@ -439,11 +441,12 @@ public class KdbAdapterIT {
   @Test public void testGroupByOneColumnNotProjected() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select count(*) from zips group by state order by 1")
+        .query("select count(*) from trade group by sym order by 1")
         .limit(2)
-        .returns("EXPR$0=24\n"
-            + "EXPR$0=53\n")
+        .returns("EXPR$0=2\n"
+            + "EXPR$0=1\n")
         .queryContains(
             kdbChecker(
                 "{$project: {STATE: '$state'}}",
@@ -491,18 +494,17 @@ public class KdbAdapterIT {
   @Test public void testGroupByAvg() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
         .query(
-            "select state, avg(pop) as a from zips group by state order by state")
+            "select p, avg(qty) as a from sp group by p order by p")
         .limit(2)
-        .returns("STATE=AK; A=2793\n"
-            + "STATE=AL; A=7126\n")
+        .returns("p=p1; a=300.0\n" +
+                "p=p2; a=250.0\n")
         .queryContains(
             kdbChecker(
-                "{$project: {POP: '$pop', STATE: '$state'}}",
-                "{$group: {_id: '$STATE', A: {$avg: '$POP'}}}",
-                "{$project: {STATE: '$_id', A: '$A'}}",
-                "{$sort: {STATE: 1}}"));
+                "group$ a: avg qty by p",
+                        "sort: `p xasc "));
   }
 
   @Test public void testGroupByAvgSumCount() {
@@ -513,15 +515,12 @@ public class KdbAdapterIT {
         .query(
             "select p, avg(qty) as a, sum(qty) as b, count(qty) as c from sp group by p order by p")
         .limit(2)
-        .returns("STATE=AK; A=2793; S=544698; C=195\n"
-            + "STATE=AL; A=7126; S=4040587; C=567\n")
+        .returns("p=p1; a=300.0; b=600; c=2\n" +
+                "p=p2; a=250.0; b=1000; c=4\n")
         .queryContains(
             kdbChecker(
-                "{$project: {POP: '$pop', STATE: '$state'}}",
-                "{$group: {_id: '$STATE', _1: {$sum: '$POP'}, _2: {$sum: {$cond: [ {$eq: ['POP', null]}, 0, 1]}}}}",
-                "{$project: {STATE: '$_id', _1: '$_1', _2: '$_2'}}",
-                "{$sort: {STATE: 1}}",
-                "{$project: {STATE: 1, A: {$divide: [{$cond:[{$eq: ['$_2', {$literal: 0}]},null,'$_1']}, '$_2']}, S: {$cond:[{$eq: ['$_2', {$literal: 0}]},null,'$_1']}, C: '$_2'}}"));
+                "group$ a: avg qty,b: sum qty,c: count p by p",
+                        "sort: `p xasc "));
   }
 
   @Test public void testGroupByHaving() {
@@ -577,10 +576,11 @@ public class KdbAdapterIT {
   @Test public void testGroupByMinMaxSum() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select count(*) as c, state,\n"
-            + " min(pop) as min_pop, max(pop) as max_pop, sum(pop) as sum_pop\n"
-            + "from zips group by state order by state")
+        .query("select count(*) as c, p,\n"
+            + " min(qty) as min_pop, max(qty) as max_pop, sum(qty) as sum_pop\n"
+            + "from sp group by p order by p")
         .limit(2)
         .returns("C=195; STATE=AK; MIN_POP=0; MAX_POP=32383; SUM_POP=544698\n"
             + "C=567; STATE=AL; MIN_POP=0; MAX_POP=44165; SUM_POP=4040587\n")
@@ -596,9 +596,10 @@ public class KdbAdapterIT {
   @Test public void testGroupComposite() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select count(*) as c, state, city from zips\n"
-            + "group by state, city order by c desc limit 2")
+        .query("select count(*) as c, s, p from sp\n"
+            + "group by s, p order by c desc limit 2")
         .returns("C=93; STATE=TX; CITY=HOUSTON\n"
             + "C=56; STATE=CA; CITY=LOS ANGELES\n")
         .queryContains(
@@ -662,15 +663,18 @@ public class KdbAdapterIT {
   @Test public void testFilter() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select state, city from zips where state = 'CA'")
+        .query("select sym, size from trade where sym = 'a'")
         .limit(2)
-        .returns("STATE=CA; CITY=LOS ANGELES\n"
-            + "STATE=CA; CITY=LOS ANGELES\n")
-        .explainContains("PLAN=KdbToEnumerableConverter\n"
-            + "  KdbProject(STATE=[CAST(ITEM($0, 'state')):VARCHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"], CITY=[CAST(ITEM($0, 'city')):VARCHAR(20) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\"])\n"
-            + "    KdbFilter(condition=[=(CAST(ITEM($0, 'state')):VARCHAR(2) CHARACTER SET \"ISO-8859-1\" COLLATE \"ISO-8859-1$en_US$primary\", 'CA')])\n"
-            + "      KdbTableScan(table=[[kdb_raw, zips]])");
+        .returns("sym=a; size=100\n" +
+                "sym=a; size=120\n")
+        .explainContains("PLAN=KdbToEnumerableConverter\n" +
+                "  KdbProject(sym=[$1], size=[$3])\n" +
+                "    KdbFilter(condition=[=($1, 'a')])\n" +
+                "      KdbTableScan(table=[[q, trade]])\n" +
+                "\n" +
+                "");
   }
 
   /** KdbDB's predicates are handed (they can only accept literals on the
@@ -786,14 +790,15 @@ public class KdbAdapterIT {
   @Test public void testCountViaInt() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select count(*) from zips")
+        .query("select count(*) from sp")
         .returns(
             new Function<ResultSet, Void>() {
               public Void apply(ResultSet input) {
                 try {
                   assertThat(input.next(), CoreMatchers.is(true));
-                  assertThat(input.getInt(1), CoreMatchers.is(29353));
+                  assertThat(input.getInt(1), CoreMatchers.is(12));
                   return null;
                 } catch (SQLException e) {
                   throw new RuntimeException(e);

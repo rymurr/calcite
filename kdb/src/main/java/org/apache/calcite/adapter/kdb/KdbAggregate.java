@@ -110,7 +110,7 @@ public class KdbAggregate
       } else {
         k = keys.get(0);
       }
-      list.add(outNames.get(i++) + ": " + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList(), k, aggCall.isDistinct()));
+      list.add(outNames.get(i++).replace("$","_") + ": " + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList(), k, aggCall.isDistinct()));
     }
     String by = keys.isEmpty() ? "": (" by " + Joiner.on(",").join(keys));
     implementor.add(null,

@@ -26,6 +26,7 @@ import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rel.rules.AggregateExpandDistinctAggregatesRule;
+import org.apache.calcite.rel.rules.AggregateReduceFunctionsRule;
 import org.apache.calcite.rel.type.RelDataType;
 
 import java.util.List;
@@ -82,6 +83,7 @@ public class KdbTableScan extends TableScan implements KdbRel {
       planner.addRule(rule);
     }
     planner.removeRule(AggregateExpandDistinctAggregatesRule.INSTANCE);
+    planner.removeRule(AggregateReduceFunctionsRule.INSTANCE);
   }
 
   public void implement(Implementor implementor) {

@@ -70,7 +70,7 @@ public class KdbSort extends Sort implements KdbRel {
       for (RelFieldCollation fieldCollation : collation.getFieldCollations()) {
         final String name =
             fields.get(fieldCollation.getFieldIndex()).getName();
-        keys.put(direction(fieldCollation), name);
+        keys.put(direction(fieldCollation), name.replace("$","_"));
         if (false) {
           // TODO: NULLS FIRST and NULLS LAST
           switch (fieldCollation.nullDirection) {
@@ -83,13 +83,23 @@ public class KdbSort extends Sort implements KdbRel {
       }
       implementor.add(null, "sort: " + sort(keys));
     }
-    if (offset != null) {
+    if (offset != null && fetch != null) {
+      Long offsetVal = (Long) ((RexLiteral) offset).getValue2();
+      Long fetchVal = (Long) ((RexLiteral) fetch).getValue2();
       implementor.add(null,
-          "{$skip: " + ((RexLiteral) offset).getValue() + "}");
-    }
-    if (fetch != null) {
+              "skip: i > " + offsetVal);
       implementor.add(null,
-          "limit: i < " + ((RexLiteral) fetch).getValue());
+              "limit: i <= " + (offsetVal + fetchVal));
+
+    } else {
+      if (offset != null) {
+        implementor.add(null,
+                "skip: i > " + ((RexLiteral) offset).getValue());
+      }
+      if (fetch != null) {
+        implementor.add(null,
+                "limit: i < " + ((RexLiteral) fetch).getValue());
+      }
     }
   }
 
