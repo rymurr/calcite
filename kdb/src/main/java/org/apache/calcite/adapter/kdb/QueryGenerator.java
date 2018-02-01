@@ -7,6 +7,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.calcite.model.JsonMapSchema;
+import org.apache.calcite.rel.core.Join;
 import org.apache.calcite.util.JsonBuilder;
 import org.apache.calcite.util.Pair;
 
@@ -94,9 +95,9 @@ public class QueryGenerator {
     }
 
     private static StringBuffer addProject(StringBuffer buffer, Map<String, String> ops, List<String> groupFields, String groupbyStatement) {
+        List<String> fields = Lists.newArrayList();
         if (ops.containsKey("project")) {
             String[] keys = ops.get("project").split(",");
-            List<String> fields = Lists.newArrayList();
             Set<String> fieldSet = Sets.newHashSet(groupFields);
             for (String key: keys) {
                 if (!fieldSet.contains(key.replaceAll(" ",""))) {
@@ -106,19 +107,54 @@ public class QueryGenerator {
             if (groupbyStatement != null) {
                 fields.add(groupbyStatement);
             }
-            buffer.append(" ");
-            buffer.append(Joiner.on(",").join(fields));
-            buffer.append(" ");
+
         } else {
-            List<String> fields = Lists.newArrayList();
             if (groupbyStatement != null) {
                 fields.add(groupbyStatement);
             }
-            buffer.append(" ");
-            buffer.append(Joiner.on(",").join(fields));
-            buffer.append(" ");
         }
+        buffer.append(" ");
+        buffer.append(removeDups(fields));
+        buffer.append(" ");
         return buffer;
+    }
+
+    private static String removeDups(List<String> fields) {
+        Map<String, String> fieldSet = Maps.newHashMap();
+        for (String field: fields) {
+            for (String subField: field.split(",")) {
+                String[] kvpair = subField.split(":");
+                if (kvpair.length == 2) {
+                    fieldSet.put(kvpair[0], kvpair[1]);
+                } else {
+                    fieldSet.put(kvpair[0], kvpair[0]);
+                }
+            }
+        }
+        Map<String, String> newFieldSet = Maps.newHashMap();
+        for (String k: fieldSet.keySet()) {
+            if (!k.contains("_f")) {
+                continue;
+            }
+            for (Map.Entry<String, String> kv: fieldSet.entrySet()) {
+                if (kv.getValue().contains(k.replace(" ",""))) {
+                    newFieldSet.put(kv.getKey(), kv.getValue().replace(k.replace(" ",""),fieldSet.get(k)));
+                }
+            }
+        }
+        List<String> newFields = Lists.newArrayList();
+        for (Map.Entry<String, String> kv: fieldSet.entrySet()) {
+            if (kv.getKey().contains("_f")) {
+                continue;
+            }
+            if (newFieldSet.containsKey(kv.getKey())) {
+                newFields.add(kv.getKey() + ": " + newFieldSet.get(kv.getKey()));
+            } else {
+                newFields.add(kv.getKey() + ": " + kv.getValue());
+            }
+        }
+
+        return Joiner.on(",").join(newFields);
     }
 
     private static Map<String, String> toJson(String project) {

@@ -112,9 +112,9 @@ public class KdbAggregate
       }
       list.add(outNames.get(i++).replace("$","_") + ": " + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList(), k, aggCall.isDistinct()));
     }
-    String by = keys.isEmpty() ? "": (" by " + Joiner.on(",").join(keys));
+    String by = keys.isEmpty() ? "": (" by " + Joiner.on(", ").join(keys));
     implementor.add(null,
-        "group$ " + Joiner.on(",").join(list) + by);
+        "group$ " + Joiner.on(", ").join(list) + by);
     /*final List<String> fixups;
     if (groupSet.cardinality() == 1) {
       fixups = new AbstractList<String>() {

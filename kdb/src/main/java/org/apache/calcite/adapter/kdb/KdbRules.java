@@ -16,6 +16,7 @@
  */
 package org.apache.calcite.adapter.kdb;
 
+import com.google.common.base.Joiner;
 import org.apache.calcite.adapter.enumerable.RexImpTable;
 import org.apache.calcite.adapter.enumerable.RexToLixTranslator;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
@@ -135,11 +136,11 @@ public class KdbRules {
 
     static {
       // Arithmetic
-      KDB_OPERATORS.put(SqlStdOperatorTable.DIVIDE, "$divide");
-      KDB_OPERATORS.put(SqlStdOperatorTable.MULTIPLY, "$multiply");
-      KDB_OPERATORS.put(SqlStdOperatorTable.MOD, "$mod");
-      KDB_OPERATORS.put(SqlStdOperatorTable.PLUS, "$add");
-      KDB_OPERATORS.put(SqlStdOperatorTable.MINUS, "$subtract");
+      KDB_OPERATORS.put(SqlStdOperatorTable.DIVIDE, "%");
+      KDB_OPERATORS.put(SqlStdOperatorTable.MULTIPLY, "*");
+      KDB_OPERATORS.put(SqlStdOperatorTable.MOD, "mod");
+      KDB_OPERATORS.put(SqlStdOperatorTable.PLUS, "+");
+      KDB_OPERATORS.put(SqlStdOperatorTable.MINUS, "-");
       // Boolean
       KDB_OPERATORS.put(SqlStdOperatorTable.AND, "$and");
       KDB_OPERATORS.put(SqlStdOperatorTable.OR, "$or");
@@ -184,7 +185,7 @@ public class KdbRules {
       }
       String stdOperator = KDB_OPERATORS.get(call.getOperator());
       if (stdOperator != null) {
-        return "{" + stdOperator + ": [" + Util.commaList(strings) + "]}";
+        return "(" + Joiner.on(")" + stdOperator + "(").join(strings) + ")";
       }
       if (call.getOperator() == SqlStdOperatorTable.ITEM) {
         final RexNode op1 = call.operands.get(1);

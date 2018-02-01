@@ -352,19 +352,15 @@ public class KdbAdapterIT {
   @Test public void testInPlan() {
     CalciteAssert.that()
         .enable(enabled())
-        .withModel(KDB_FOODMART_MODEL)
-        .query("select \"store_id\", \"store_name\" from \"store\"\n"
-            + "where \"store_name\" in ('Store 1', 'Store 10', 'Store 11', 'Store 15', 'Store 16', 'Store 24', 'Store 3', 'Store 7')")
+            .with(Lex.JAVA)
+        .with(ZIPS)
+        .query("select `sym`, `price` from `trade`\n"
+            + "where `sym` in ('a', 'b')")
         .returns(
             checkResultUnordered(
-                "store_id=1; store_name=Store 1",
-                "store_id=3; store_name=Store 3",
-                "store_id=7; store_name=Store 7",
-                "store_id=10; store_name=Store 10",
-                "store_id=11; store_name=Store 11",
-                "store_id=15; store_name=Store 15",
-                "store_id=16; store_name=Store 16",
-                "store_id=24; store_name=Store 24"))
+                    "sym=a; price=10.75",
+                    "sym=a; price=10.85",
+                    "sym=b; price=12.75"))
         .queryContains(
             kdbChecker(
                 "{\n"
@@ -429,13 +425,14 @@ public class KdbAdapterIT {
   @Test public void testCountGroupByEmptyMultiplyBy2() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
-        .query("select count(*)*2 from zips")
-        .returns("EXPR$0=58706\n")
+        .query("select count(*)*2 from trade")
+        .returns("EXPR$0=6\n")
         .queryContains(
             kdbChecker(
-                "{$group: {_id: {}, _0: {$sum: 1}}}",
-                "{$project: {'EXPR$0': {$multiply: ['$_0', {$literal: 2}]}}}"));
+                "group$ _f0: count time",
+                        "project& EXPR_0: (_f0)*(2)"));
   }
 
   @Test public void testGroupByOneColumnNotProjected() {
@@ -459,18 +456,16 @@ public class KdbAdapterIT {
   @Test public void testGroupByOneColumn() {
     CalciteAssert.that()
         .enable(enabled())
+            .with(Lex.JAVA)
         .with(ZIPS)
         .query(
-            "select state, count(*) as c from zips group by state order by state")
+            "select sym, count(*) as c from trade group by sym order by sym")
         .limit(2)
-        .returns("STATE=AK; C=195\n"
-            + "STATE=AL; C=567\n")
+        .returns("sym=a; c=2\n"
+            + "sym=b; c=1\n")
         .queryContains(
-            kdbChecker(
-                "{$project: {STATE: '$state'}}",
-                "{$group: {_id: '$STATE', C: {$sum: 1}}}",
-                "{$project: {STATE: '$_id', C: '$C'}}",
-                "{$sort: {STATE: 1}}"));
+            kdbChecker("group$ c: count sym by sym",
+      "sort: `sym xasc "));
   }
 
   @Test public void testGroupByOneColumnReversed() {
@@ -582,15 +577,13 @@ public class KdbAdapterIT {
             + " min(qty) as min_pop, max(qty) as max_pop, sum(qty) as sum_pop\n"
             + "from sp group by p order by p")
         .limit(2)
-        .returns("C=195; STATE=AK; MIN_POP=0; MAX_POP=32383; SUM_POP=544698\n"
-            + "C=567; STATE=AL; MIN_POP=0; MAX_POP=44165; SUM_POP=4040587\n")
+        .returns("c=2; p=p1; min_pop=300; max_pop=300; sum_pop=600\n" +
+                "c=4; p=p2; min_pop=200; max_pop=400; sum_pop=1000\n")
         .queryContains(
             kdbChecker(
-                "{$project: {POP: '$pop', STATE: '$state'}}",
-                "{$group: {_id: '$STATE', C: {$sum: 1}, MIN_POP: {$min: '$POP'}, MAX_POP: {$max: '$POP'}, SUM_POP: {$sum: '$POP'}}}",
-                "{$project: {STATE: '$_id', C: '$C', MIN_POP: '$MIN_POP', MAX_POP: '$MAX_POP', SUM_POP: '$SUM_POP'}}",
-                "{$project: {C: 1, STATE: 1, MIN_POP: 1, MAX_POP: 1, SUM_POP: 1}}",
-                "{$sort: {STATE: 1}}"));
+                "group$ c: count p, min_pop: min qty, max_pop: max qty, sum_pop: sum qty by p",
+                    "project& c, p, min_pop, max_pop, sum_pop",
+                    "sort: `p xasc "));
   }
 
   @Test public void testGroupComposite() {
